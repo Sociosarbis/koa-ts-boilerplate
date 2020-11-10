@@ -1,0 +1,46 @@
+const webpack = require('webpack');
+const path = require('path');
+const nodeExternals = require('webpack-node-externals');
+const StartServerPlugin = require('start-server-webpack-plugin');
+
+module.exports = {
+  entry: ['webpack/hot/poll?100', './src/main.ts'],
+  watch: true,
+  node: false,
+  target: 'node',
+  devtool: 'cheap-source-map',
+  externals: [
+    nodeExternals({
+      allowlist: ['webpack/hot/poll?100'],
+    }),
+  ],
+  module: {
+    rules: [
+      {
+        test: /.tsx?$/,
+        use: 'ts-loader',
+        exclude: /node_modules/,
+      },
+    ],
+  },
+  mode: 'development',
+  resolve: {
+    alias: {
+      '@': path.join(__dirname, 'src'),
+    },
+    extensions: ['.tsx', '.ts', '.js'],
+  },
+  plugins: [
+    new webpack.HotModuleReplacementPlugin(),
+    new StartServerPlugin({
+      name: 'server.js',
+      nodeArgs: ['--inspect-brk=9229'],
+    }),
+  ],
+  output: {
+    path: path.join(__dirname, 'dist'),
+    filename: 'server.js',
+    devtoolModuleFilenameTemplate: '[absolute-resource-path]',
+    devtoolFallbackModuleFilenameTemplate: '[absolute-resource-path]?[hash]',
+  },
+};

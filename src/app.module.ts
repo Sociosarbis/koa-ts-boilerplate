@@ -31,7 +31,7 @@ const middlewares: Koa.Middleware[] = [
   }),
   jsonMiddlew(),
   viewsMiddlew(joinPath('../assets/views'), { extension: 'ejs' }),
-  new AppController().middleware(),
+  new AppController().initialize().asMiddleware(),
 ];
 
 export class AppModule extends Koa {

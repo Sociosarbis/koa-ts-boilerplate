@@ -1,22 +1,38 @@
-import { Context } from 'koa';
-import * as Router from 'koa-router';
-import { AppService } from './app.service';
+import appService from './app.service';
+import { Get } from '@/common/decorators/request';
+import { Controller } from '@/common/decorators/controller';
+import { BaseController } from '@/base/controller';
+import { AppContext } from '@/base/types';
+import * as fs from 'fs';
 
-export class AppController {
-  private readonly router = new Router();
-  private readonly appService = new AppService();
-  constructor() {
-    this.router.get('/', this.getHello);
-  }
-
-  getHello = async (ctx: Context & Router.RouterContext) => {
+@Controller()
+export class AppController extends BaseController {
+  @Get()
+  async getHello(ctx: AppContext) {
     await ctx.render('index', {
       title: 'Ekwing',
-      greeting: this.appService.getHello(),
+      greeting: appService.getHello(),
     });
-  };
+  }
 
-  middleware() {
-    return this.router.routes();
+  @Get('dir')
+  async getDir(ctx: AppContext) {
+    ctx.body = fs.readdirSync(__dirname).join(',');
+  }
+
+  @Get('cats')
+  async getCats(ctx: AppContext) {
+    await ctx.render('index', {
+      title: 'Mia, Abby and Lulu.',
+      greeting: 'Hey',
+    });
+  }
+
+  @Get('cat/:cat')
+  async getCat(ctx: AppContext) {
+    await ctx.render('index', {
+      title: ctx.params.cat,
+      greeting: 'Found a cat',
+    });
   }
 }

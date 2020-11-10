@@ -3,3 +3,5 @@ export class AppService {
     return 'Hello';
   }
 }
+
+export default new AppService();
