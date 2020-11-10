@@ -3,7 +3,6 @@ import { Get } from '@/common/decorators/request';
 import { Controller } from '@/common/decorators/controller';
 import { BaseController } from '@/base/controller';
 import { AppContext } from '@/base/types';
-import * as fs from 'fs';
 
 @Controller()
 export class AppController extends BaseController {
