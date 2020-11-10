@@ -15,11 +15,6 @@ export class AppController extends BaseController {
     });
   }
 
-  @Get('dir')
-  async getDir(ctx: AppContext) {
-    ctx.body = fs.readdirSync(__dirname).join(',');
-  }
-
   @Get('cats')
   async getCats(ctx: AppContext) {
     await ctx.render('index', {
