@@ -1,5 +1,10 @@
 import * as Router from 'koa-router';
-import { PATH_PREFIX_METADATA, METHOD_METADATA, PATH_METADATA } from './consts';
+import {
+  PATH_PREFIX_METADATA,
+  METHOD_METADATA,
+  PATH_METADATA,
+  MIDDLEWARE_METADATA,
+} from './consts';
 
 export class BaseController {
   protected readonly router = new Router();
@@ -29,8 +34,14 @@ export class BaseController {
         fnName,
       );
       if (method) {
+        const middlewares =
+          Reflect.getMetadata(MIDDLEWARE_METADATA, proto, fnName) || [];
         const path = Reflect.getMetadata(PATH_METADATA, proto, fnName);
-        this.router[method](this._cleanSegment(path), proto[fnName]);
+        this.router[method](
+          this._cleanSegment(path),
+          ...middlewares,
+          proto[fnName],
+        );
       }
     });
   }

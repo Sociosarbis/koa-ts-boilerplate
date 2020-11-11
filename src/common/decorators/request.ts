@@ -14,7 +14,7 @@ function createMethodDecorator(method: RequestMethodEnum) {
 }
 
 const Get = createMethodDecorator('get');
-const Post = createMethodDecorator('put');
+const Post = createMethodDecorator('post');
 const Patch = createMethodDecorator('patch');
 const Del = createMethodDecorator('del');
 const All = createMethodDecorator('all');

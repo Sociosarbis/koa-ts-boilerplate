@@ -1,2 +1,9 @@
 <h1><%= title %></h1>
 <p><%= greeting %> <%= title %></p>
+<p>views: <%= views %></p>
+<form method="POST" action="/upload" enctype="multipart/form-data">
+  <input name="filename" />
+  <input name="file" type="file" />
+  <input name="files" type="file" multiple />
+  <input type="submit" />
+</form>

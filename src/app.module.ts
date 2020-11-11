@@ -1,6 +1,8 @@
 import * as Koa from 'koa';
 import * as path from 'path';
 import * as loggerMiddlew from 'koa-logger';
+import * as sessionMiddlew from 'koa-session-minimal';
+import * as corsMiddlew from 'koa-cors';
 import * as viewsMiddlew from 'koa-views';
 import * as bodyMiddlew from 'koa-body';
 import * as jsonMiddlew from 'koa-json';
@@ -15,6 +17,8 @@ function joinPath(...segments: string[]) {
 
 const middlewares: Koa.Middleware[] = [
   loggerMiddlew(),
+  corsMiddlew(),
+  sessionMiddlew(),
   faviconMiddlew(joinPath('../assets/static/favicon.ico')),
   staticServerMiddlew({
     rootDir: joinPath('../assets/static'),
