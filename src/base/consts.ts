@@ -2,6 +2,10 @@ const PATH_PREFIX_METADATA = 'path-prefix';
 const METHOD_METADATA = 'method';
 const PATH_METADATA = 'path';
 const MIDDLEWARE_METADATA = 'middleware';
+const QUEUE_METADATA = 'queue';
+const PROCESSOR_METADATA = 'processor';
+const PROCESS_METADATA = 'process';
+const MODULE_METADATA = 'module';
 
 const REQUEST_METHODS = {
   GET: 'get',
@@ -20,5 +24,9 @@ export {
   PATH_METADATA,
   MIDDLEWARE_METADATA,
   REQUEST_METHODS,
+  QUEUE_METADATA,
+  MODULE_METADATA,
+  PROCESSOR_METADATA,
+  PROCESS_METADATA,
   RequestMethodEnum,
 };

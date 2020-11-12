@@ -8,7 +8,7 @@ module.exports = {
   watch: true,
   node: false,
   target: 'node',
-  devtool: 'cheap-source-map',
+  devtool: 'cheap-module-source-map',
   externals: [
     nodeExternals({
       allowlist: ['webpack/hot/poll?100'],

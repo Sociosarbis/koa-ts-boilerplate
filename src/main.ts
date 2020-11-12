@@ -1,6 +1,8 @@
 import 'reflect-metadata';
 import { AppModule } from './app.module';
 
+import { FileController } from '@/modules/file/file.controller';
+
 declare global {
   interface NodeModule {
     hot?: {
@@ -10,9 +12,8 @@ declare global {
   }
 }
 function bootstrap() {
-  const app = new AppModule();
+  const app = new AppModule().asApp();
   const server = app.listen(process.env.PORT || 3000);
-
   if (module.hot) {
     module.hot.accept();
     module.hot.dispose(() => server.close());

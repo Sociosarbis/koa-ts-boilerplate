@@ -10,12 +10,11 @@ export class BaseController {
   protected readonly router = new Router();
   private _prefix: string;
 
-  initialize() {
+  constructor() {
     const prefix = Reflect.getMetadata(PATH_PREFIX_METADATA, this.constructor);
     this._prefix = this._cleanSegment(prefix);
     this.router.prefix(this._prefix);
     this._registerRoutes();
-    return this;
   }
 
   protected _cleanSegment(segment: string) {
@@ -40,7 +39,7 @@ export class BaseController {
         this.router[method](
           this._cleanSegment(path),
           ...middlewares,
-          proto[fnName],
+          proto[fnName].bind(this),
         );
       }
     });

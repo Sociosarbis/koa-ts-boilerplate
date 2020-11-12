@@ -1,4 +1,6 @@
-import * as Koa from 'koa';
+import { BaseModule } from '@/base/module';
+import { Module } from '@/common/decorators/module';
+import { Middleware } from 'koa';
 import * as path from 'path';
 import * as loggerMiddlew from 'koa-logger';
 import * as sessionMiddlew from 'koa-session-minimal';
@@ -10,12 +12,13 @@ import * as faviconMiddlew from 'koa-favicon';
 import * as staticServerMiddlew from 'koa-static-server';
 import * as attachErrorHandler from 'koa-onerror';
 import { AppController } from './app.controller';
+import { FileModule } from '@/modules/file/file.module';
 
 function joinPath(...segments: string[]) {
   return path.join(__dirname, ...segments);
 }
 
-const middlewares: Koa.Middleware[] = [
+const middlewares: Middleware[] = [
   loggerMiddlew(),
   corsMiddlew(),
   sessionMiddlew(),
@@ -35,10 +38,13 @@ const middlewares: Koa.Middleware[] = [
   }),
   jsonMiddlew(),
   viewsMiddlew(joinPath('../assets/views'), { extension: 'ejs' }),
-  new AppController().initialize().asMiddleware(),
 ];
 
-export class AppModule extends Koa {
+@Module({
+  imports: [new FileModule()],
+  controllers: [new AppController()],
+})
+export class AppModule extends BaseModule {
   constructor() {
     super();
     middlewares.forEach((m) => this.use(m));

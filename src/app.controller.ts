@@ -56,31 +56,4 @@ export class AppController extends BaseController {
       }),
     };
   }
-
-  @Post('upload')
-  async upload(ctx: AppContext) {
-    const files = ctx.request.files;
-    await mkdir(`./users/${ctx.request.body.filename}/`, {
-      recursive: true,
-    });
-    if (files.file) {
-      await writeFile(
-        `./users/${ctx.request.body.filename}/${files.file.name}`,
-        await readFile(files.file.path),
-      );
-    }
-
-    if (files.files) {
-      // @ts-ignore
-      for (let i = 0; files.files.length; i++) {
-        await writeFile(
-          `./users/${ctx.request.body.filename}/${files.files[i].name}`,
-          await readFile(files.files[i].path),
-        );
-      }
-    }
-    ctx.body = {
-      status: 0,
-    };
-  }
 }

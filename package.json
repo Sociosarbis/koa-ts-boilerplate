@@ -9,10 +9,12 @@
     "test": "jest"
   },
   "dependencies": {
+    "bull": "^3.18.1",
     "ejs": "^3.1.5",
     "jsonwebtoken": "^8.5.1",
     "koa": "^2.13.0",
     "koa-body": "^4.2.0",
+    "koa-compose": "^4.1.0",
     "koa-cors": "^0.0.16",
     "koa-favicon": "^2.1.0",
     "koa-json": "^2.0.2",
@@ -27,6 +29,7 @@
     "tsconfig-paths": "^3.9.0"
   },
   "devDependencies": {
+    "@types/bull": "^3.14.4",
     "@types/jsonwebtoken": "^8.5.0",
     "@types/koa-cors": "^0.0.0",
     "@types/koa-favicon": "^2.0.19",
