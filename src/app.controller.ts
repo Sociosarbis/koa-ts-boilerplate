@@ -2,15 +2,9 @@ import appService from './app.service';
 import { Get, Post } from '@/common/decorators/request';
 import Compose from '@/common/decorators/compose';
 import jwtMiddlew, { sign } from '@/common/middlewares/jwt';
-import * as fs from 'fs';
-import { promisify } from 'util';
 import { Controller } from '@/common/decorators/controller';
 import { BaseController } from '@/base/controller';
 import { AppContext } from '@/base/types';
-
-const writeFile = promisify(fs.writeFile);
-const mkdir = promisify(fs.mkdir);
-const readFile = promisify(fs.readFile);
 
 @Controller()
 export class AppController extends BaseController {
