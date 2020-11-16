@@ -5,7 +5,7 @@ import * as path from 'path';
 import * as loggerMiddlew from 'koa-logger';
 import * as sessionMiddlew from 'koa-session-minimal';
 import * as corsMiddlew from 'koa-cors';
-import * as viewsMiddlew from 'koa-views';
+import viewsMiddlew from '@/common/middlewares/handlebars';
 import * as bodyMiddlew from 'koa-body';
 import * as jsonMiddlew from 'koa-json';
 import * as faviconMiddlew from 'koa-favicon';
@@ -37,7 +37,7 @@ const middlewares: Middleware[] = [
     textLimit: '20mb',
   }),
   jsonMiddlew(),
-  viewsMiddlew(joinPath('../assets/views'), { extension: 'ejs' }),
+  viewsMiddlew({}),
 ];
 
 @Module({

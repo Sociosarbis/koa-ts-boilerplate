@@ -1,8 +1,6 @@
 import 'reflect-metadata';
 import { AppModule } from './app.module';
 
-import { FileController } from '@/modules/file/file.controller';
-
 declare global {
   interface NodeModule {
     hot?: {
