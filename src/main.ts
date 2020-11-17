@@ -11,7 +11,7 @@ declare global {
 }
 function bootstrap() {
   const app = new AppModule().asApp();
-  const server = app.listen(process.env.PORT || 3000);
+  const server = app.listen(process.env.PORT || 3001);
   if (module.hot) {
     module.hot.accept();
     module.hot.dispose(() => server.close());

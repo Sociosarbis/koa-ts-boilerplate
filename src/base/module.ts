@@ -5,6 +5,7 @@ import {
   PROCESSOR_METADATA,
   PROCESS_METADATA,
   QUEUE_METADATA,
+  CLASS_FACTORY_METADATA,
 } from '@/base/consts';
 import { ModuleConfig } from '@/common/decorators/module';
 import * as Queue from 'bull';
@@ -23,8 +24,11 @@ export class BaseModule extends Koa {
   protected handleProviders(moduleConfig: ModuleConfig) {
     if (moduleConfig.providers) {
       moduleConfig.providers.forEach((p) => {
-        if (p instanceof Queue) {
-          this.queueMap[p.name] = p;
+        const inst = Reflect.getMetadata(CLASS_FACTORY_METADATA, p)
+          ? p()
+          : new p();
+        if (inst instanceof Queue) {
+          this.queueMap[inst.name] = p;
         } else {
           this.handleProcessor(p);
         }
@@ -65,7 +69,7 @@ export class BaseModule extends Koa {
     if (this.moduleConfig.imports) {
       middlewares.push(
         ...this.moduleConfig.imports.reduce((acc, m) => {
-          acc.push(m.asMiddleware());
+          acc.push(new m().asMiddleware());
           return acc;
         }, []),
       );

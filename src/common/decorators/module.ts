@@ -3,7 +3,7 @@ import { BaseController } from '@/base/controller';
 import { MODULE_METADATA } from '@/base/consts';
 
 export type ModuleConfig = {
-  imports?: BaseModule[];
+  imports?: typeof BaseModule[];
   providers?: any[];
   controllers?: BaseController[];
 };

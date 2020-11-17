@@ -41,7 +41,7 @@ const middlewares: Middleware[] = [
 ];
 
 @Module({
-  imports: [new FileModule()],
+  imports: [FileModule],
   controllers: [new AppController()],
 })
 export class AppModule extends BaseModule {
