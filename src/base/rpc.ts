@@ -1,5 +1,5 @@
 import * as net from 'net';
-import mp from '@msgpack/msgpack';
+import * as mp from '@msgpack/msgpack';
 
 function createServer(port: number, host = '127.0.0.1') {
   // 创建一个 TCP 服务实例
@@ -63,12 +63,31 @@ type YarRequest = {
   id: number;
   method: string;
   mlen: number;
+  out: Buffer;
 };
+
+type YarHeader = {
+  id: number;
+  version: number;
+  magic_num: number;
+  reserved: number;
+  provider: string;
+  token: string;
+  body_len: number;
+};
+
+type YarPayload = {
+  data: Buffer;
+  size: number;
+};
+
+const YAR_PROTOCOL_MAGIC_NUM = 0x80dfec60;
 
 class YarClient {
   conn: net.Socket;
   host: string;
   port: number;
+  persistent = false;
   connected = false;
   private _connectPromise: Promise<void>;
   private _connectRes: () => void;
@@ -88,7 +107,35 @@ class YarClient {
   async call(method: string, args: any[] = []) {
     await this._connectPromise;
     const request = this.createRequest(method);
-    const params = mp.encode(args);
+    const header: Partial<YarHeader> = {};
+    header.magic_num = YAR_PROTOCOL_MAGIC_NUM;
+    header.provider = 'Yar(Node)-0.0.1';
+    header.id = request.id;
+    header.reserved = this.persistent ? 1 : 0;
+    request.out = Buffer.from(mp.encode(args).buffer, 0);
+    const headerPack = Buffer.alloc(82);
+    let offset = 0;
+    headerPack.writeUInt32BE(header.id, offset);
+    offset += 6;
+    headerPack.writeUInt32BE(header.magic_num, offset);
+    offset += 4;
+    headerPack.writeUInt32BE(header.reserved, offset);
+    offset += 4;
+    headerPack.write(header.provider, offset, 32);
+    offset += 64;
+  }
+
+  packRequest(req: YarRequest, extraBytes: number) {
+    const requestKeys = {
+      i: req.id,
+      m: req.mlen,
+      p: req.out,
+    };
+    const pk = Buffer.from(mp.encode(requestKeys).buffer, 0);
+    const tmp: Partial<YarPayload> = {};
+    tmp.data = Buffer.alloc(extraBytes + pk.length);
+    tmp.size = tmp.data.length;
+    pk.copy(tmp.data, extraBytes, 0, pk.length);
   }
 
   createRequest(method: string) {
@@ -128,6 +175,5 @@ class YarClient {
   }
 }
 
-createClient(8040, '172.17.20.118');
-
+// createClient(8040, '172.17.20.118');
 export { createServer, createClient };
