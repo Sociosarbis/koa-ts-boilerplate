@@ -10,6 +10,7 @@
     "test": "jest"
   },
   "dependencies": {
+    "@msgpack/msgpack": "^2.3.0",
     "bull": "^3.18.1",
     "globby": "^11.0.1",
     "handlebars": "^4.7.6",
