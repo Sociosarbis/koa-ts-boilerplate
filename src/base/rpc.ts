@@ -1,7 +1,6 @@
 import * as net from 'net';
 import * as mp from '@msgpack/msgpack';
 import { ByteArray } from '@/utils/byteArray';
-import { timeStamp } from 'console';
 
 function createServer(port: number, host = '127.0.0.1') {
   // 创建一个 TCP 服务实例
@@ -61,40 +60,57 @@ function createClient(port: number, host = '127.0.0.1') {
   return client;
 }
 
-type YarRequest = {
-  id: number;
-  method: string;
-  mlen: number;
+class YarRequest {
+  id = 1000;
+  method = '';
   out: Buffer;
-};
 
-type YarHeader = {
-  id: number;
-  version: number;
-  magic_num: number;
-  reserved: number;
-  provider: string;
-  token: string;
-  bodyLen: number;
-};
+  get mlen() {
+    return this.method.length;
+  }
+}
 
-type YarResponse = {
-  id: number;
-  status: number;
-  error: string;
-  elen: number;
+class YarHeader {
+  id = 0;
+  version = 0;
+  magicNum = 0;
+  reserved = 0;
+  provider = '';
+  token = '';
+  bodyLen = 0;
+}
+
+class YarResponse {
+  id = 0;
+  status = 0;
+  error = '';
   in: Buffer;
   payload: YarPayload;
   out: Buffer;
   buffer: Buffer;
-};
 
-type YarPayload = {
+  get elen() {
+    return this.error.length;
+  }
+}
+
+class YarPayload {
   data: Buffer;
-  size: number;
-};
+
+  get size() {
+    return this.data ? this.data.length : 0;
+  }
+}
 
 const YAR_PROTOCOL_MAGIC_NUM = 0x80dfec60;
+
+const YAR_PROVIDER = 'Yar(Node)-0.0.1';
+
+const YAR_PACKAGER = 'MSGPACK';
+
+const YAR_PACKAGER_LEN = 8;
+
+const YAR_HEADER_LEN = 82;
 
 class YarClient {
   conn: net.Socket;
@@ -104,7 +120,7 @@ class YarClient {
   connected = false;
   _readBuffer: Buffer;
   _readOffset = 0;
-  _readHeader: Partial<YarHeader>;
+  _readHeader: YarHeader;
   private _connectPromise: Promise<void>;
   private _connectRes: () => void;
 
@@ -124,15 +140,15 @@ class YarClient {
   async call(method: string, args: any[] = []) {
     await this._connectPromise;
     const request = this.createRequest(method);
-    const header: Partial<YarHeader> = {};
-    header.magic_num = YAR_PROTOCOL_MAGIC_NUM;
-    header.provider = 'Yar(Node)-0.0.1';
+    const header = new YarHeader();
+    header.magicNum = YAR_PROTOCOL_MAGIC_NUM;
+    header.provider = YAR_PROVIDER;
     header.id = request.id;
     header.reserved = this.persistent ? 1 : 0;
     request.out = Buffer.from(mp.encode(args).buffer, 0);
-    const payload = this.packRequest(request as YarRequest, 100);
+    const payload = this.packRequest(request, 100);
     this.packHeader(header).copy(payload.data, 0, 0);
-    payload.data.write('MSGPACK', 82, 8);
+    payload.data.write(YAR_PACKAGER, YAR_HEADER_LEN, YAR_PACKAGER_LEN);
     this._readOffset = 0;
     this.conn.write(payload.data);
   }
@@ -140,22 +156,21 @@ class YarClient {
   packRequest(req: YarRequest, extraBytes: number) {
     const requestKeys = {
       i: req.id,
-      m: req.mlen,
+      m: req.method,
       p: req.out,
     };
     const pk = Buffer.from(mp.encode(requestKeys).buffer, 0);
-    const tmp: Partial<YarPayload> = {};
+    const tmp = new YarPayload();
     tmp.data = Buffer.alloc(extraBytes + pk.length);
-    tmp.size = tmp.data.length;
     pk.copy(tmp.data, extraBytes, 0, pk.length);
     return tmp;
   }
 
-  packHeader(header: Partial<YarHeader>) {
-    const headerPack = new ByteArray(82);
+  packHeader(header: YarHeader) {
+    const headerPack = new ByteArray(YAR_HEADER_LEN);
     headerPack.writeUInt(header.id);
     headerPack.skip(2);
-    headerPack.writeUInt(header.magic_num);
+    headerPack.writeUInt(header.magicNum);
     headerPack.writeUInt(header.reserved);
     headerPack.writeStr(header.provider, 32);
     headerPack.skip(32);
@@ -164,12 +179,12 @@ class YarClient {
   }
 
   unpackHeader(buf: Buffer) {
-    const headerPack = ByteArray.from(buf, 82);
-    const header: Partial<YarHeader> = {};
+    const headerPack = ByteArray.from(buf, YAR_HEADER_LEN);
+    const header = new YarHeader();
     header.id = headerPack.readUInt();
     headerPack.skip(2);
-    header.magic_num = headerPack.readUInt();
-    if (header.magic_num !== YAR_PROTOCOL_MAGIC_NUM) return false;
+    header.magicNum = headerPack.readUInt();
+    if (header.magicNum !== YAR_PROTOCOL_MAGIC_NUM) return false;
     header.reserved = headerPack.readUInt();
     header.provider = headerPack.readStr(32);
     headerPack.skip(32);
@@ -178,10 +193,8 @@ class YarClient {
   }
 
   createRequest(method: string) {
-    const request: Partial<YarRequest> = {};
-    request.id = 1000;
+    const request = new YarRequest();
     request.method = method;
-    request.mlen = method.length;
     return request;
   }
 
@@ -192,29 +205,31 @@ class YarClient {
     } else {
       this._readBuffer = Buffer.concat([this._readBuffer, data]);
     }
-    if (this._readOffset === 0 && this._readBuffer.length >= 82) {
-      this._readOffset = 82;
+    if (this._readOffset === 0 && this._readBuffer.length >= YAR_HEADER_LEN) {
+      this._readOffset = YAR_HEADER_LEN;
       const header = this.unpackHeader(this._readBuffer);
       if (header) {
         this._readHeader = header;
       }
-    } else if (this._readBuffer.length >= 82 + this._readHeader.bodyLen) {
+    } else if (
+      this._readBuffer.length >=
+      YAR_HEADER_LEN + this._readHeader.bodyLen
+    ) {
       const body = ByteArray.from(
         this._readBuffer,
-        this._readHeader.bodyLen,
-        82,
+        YAR_HEADER_LEN + this._readHeader.bodyLen,
+        0,
       );
-      const obj = mp.decode(body.buffer.subarray(8)) as Record<string, any>;
-      const response: Partial<YarResponse> = {};
+      const obj = mp.decode(
+        body.buffer.subarray(YAR_HEADER_LEN + YAR_PACKAGER_LEN),
+      ) as Record<string, any>;
+      const response = new YarResponse();
       response.id = obj.i;
       response.status = obj.s;
       response.error = obj.e;
-      response.elen = obj.e.length;
-      response.in = obj.r;
-      response.payload = {
-        data: body.buffer,
-        size: body.buffer.length,
-      };
+      response.in = obj.r.buffer;
+      response.payload = new YarPayload();
+      response.payload.data = body.buffer;
       this._readOffset = -1;
       this._readBuffer = null;
     }
