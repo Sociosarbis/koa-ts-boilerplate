@@ -1,5 +1,7 @@
 import * as net from 'net';
 import * as mp from '@msgpack/msgpack';
+import { ByteArray } from '@/utils/byteArray';
+import { timeStamp } from 'console';
 
 function createServer(port: number, host = '127.0.0.1') {
   // 创建一个 TCP 服务实例
@@ -73,7 +75,18 @@ type YarHeader = {
   reserved: number;
   provider: string;
   token: string;
-  body_len: number;
+  bodyLen: number;
+};
+
+type YarResponse = {
+  id: number;
+  status: number;
+  error: string;
+  elen: number;
+  in: Buffer;
+  payload: YarPayload;
+  out: Buffer;
+  buffer: Buffer;
 };
 
 type YarPayload = {
@@ -89,6 +102,9 @@ class YarClient {
   port: number;
   persistent = false;
   connected = false;
+  _readBuffer: Buffer;
+  _readOffset = 0;
+  _readHeader: Partial<YarHeader>;
   private _connectPromise: Promise<void>;
   private _connectRes: () => void;
 
@@ -102,6 +118,7 @@ class YarClient {
     this.connect();
     this.conn.on('connect', this.handleConnect);
     this.conn.on('close', this.handleDisconnect);
+    this.conn.on('data', this.handleResponse);
   }
 
   async call(method: string, args: any[] = []) {
@@ -113,16 +130,11 @@ class YarClient {
     header.id = request.id;
     header.reserved = this.persistent ? 1 : 0;
     request.out = Buffer.from(mp.encode(args).buffer, 0);
-    const headerPack = Buffer.alloc(82);
-    let offset = 0;
-    headerPack.writeUInt32BE(header.id, offset);
-    offset += 6;
-    headerPack.writeUInt32BE(header.magic_num, offset);
-    offset += 4;
-    headerPack.writeUInt32BE(header.reserved, offset);
-    offset += 4;
-    headerPack.write(header.provider, offset, 32);
-    offset += 64;
+    const payload = this.packRequest(request as YarRequest, 100);
+    this.packHeader(header).copy(payload.data, 0, 0);
+    payload.data.write('MSGPACK', 82, 8);
+    this._readOffset = 0;
+    this.conn.write(payload.data);
   }
 
   packRequest(req: YarRequest, extraBytes: number) {
@@ -136,6 +148,33 @@ class YarClient {
     tmp.data = Buffer.alloc(extraBytes + pk.length);
     tmp.size = tmp.data.length;
     pk.copy(tmp.data, extraBytes, 0, pk.length);
+    return tmp;
+  }
+
+  packHeader(header: Partial<YarHeader>) {
+    const headerPack = new ByteArray(82);
+    headerPack.writeUInt(header.id);
+    headerPack.skip(2);
+    headerPack.writeUInt(header.magic_num);
+    headerPack.writeUInt(header.reserved);
+    headerPack.writeStr(header.provider, 32);
+    headerPack.skip(32);
+    headerPack.writeUInt(header.bodyLen);
+    return headerPack.buffer;
+  }
+
+  unpackHeader(buf: Buffer) {
+    const headerPack = ByteArray.from(buf, 82);
+    const header: Partial<YarHeader> = {};
+    header.id = headerPack.readUInt();
+    headerPack.skip(2);
+    header.magic_num = headerPack.readUInt();
+    if (header.magic_num !== YAR_PROTOCOL_MAGIC_NUM) return false;
+    header.reserved = headerPack.readUInt();
+    header.provider = headerPack.readStr(32);
+    headerPack.skip(32);
+    header.bodyLen = headerPack.readUInt();
+    return header;
   }
 
   createRequest(method: string) {
@@ -145,6 +184,41 @@ class YarClient {
     request.mlen = method.length;
     return request;
   }
+
+  handleResponse = (data: Buffer) => {
+    if (this._readOffset === -1) return;
+    if (!this._readBuffer) {
+      this._readBuffer = data;
+    } else {
+      this._readBuffer = Buffer.concat([this._readBuffer, data]);
+    }
+    if (this._readOffset === 0 && this._readBuffer.length >= 82) {
+      this._readOffset = 82;
+      const header = this.unpackHeader(this._readBuffer);
+      if (header) {
+        this._readHeader = header;
+      }
+    } else if (this._readBuffer.length >= 82 + this._readHeader.bodyLen) {
+      const body = ByteArray.from(
+        this._readBuffer,
+        this._readHeader.bodyLen,
+        82,
+      );
+      const obj = mp.decode(body.buffer.subarray(8)) as Record<string, any>;
+      const response: Partial<YarResponse> = {};
+      response.id = obj.i;
+      response.status = obj.s;
+      response.error = obj.e;
+      response.elen = obj.e.length;
+      response.in = obj.r;
+      response.payload = {
+        data: body.buffer,
+        size: body.buffer.length,
+      };
+      this._readOffset = -1;
+      this._readBuffer = null;
+    }
+  };
 
   connect() {
     if (this.connected) {
