@@ -1,6 +1,7 @@
 import * as net from 'net';
 import * as mp from '@msgpack/msgpack';
 import { ByteArray } from '@/utils/byteArray';
+import * as url from 'url';
 
 function createServer(port: number, host = '127.0.0.1') {
   // 创建一个 TCP 服务实例
@@ -44,12 +45,6 @@ function createClient(port: number, host = '127.0.0.1') {
     port,
   });
 
-  client.on('connect', () => {
-    // 向服务器发送数据
-  });
-  client.on('data', (buffer) => {
-    console.log(buffer.toString());
-  });
   // 例如监听一个未开启的端口就会报 ECONNREFUSED 错误
   client.on('error', (err) => {
     console.error('服务器异常：', err);
@@ -114,8 +109,10 @@ const YAR_HEADER_LEN = 82;
 
 class YarClient {
   conn: net.Socket;
+  protocol: string;
   host: string;
   port: number;
+  uri: string;
   persistent = false;
   connected = false;
   _readBuffer: Buffer;
@@ -124,9 +121,17 @@ class YarClient {
   private _connectPromise: Promise<void>;
   private _connectRes: () => void;
 
-  constructor(port: number, host = '127.0.0.1') {
-    this.port = port;
-    this.host = host;
+  static protocolHandlers = {
+    'tcp:': 'callTcp',
+    'http:': 'callHttp',
+  } as const;
+
+  constructor(uri: string) {
+    const urlObj = url.parse(uri);
+    this.port = urlObj.port ? Number(urlObj.port) : 80;
+    this.host = urlObj.host;
+    this.protocol = urlObj.protocol;
+    this.uri = urlObj.path || '/';
     this.init();
   }
 
@@ -137,7 +142,16 @@ class YarClient {
     this.conn.on('data', this.handleResponse);
   }
 
-  async call(method: string, args: any[] = []) {
+  async callHttp() {
+    await this._connectPromise;
+    this.conn.write(
+      [`GET ${this.uri} HTTP/1.1`, `Host: ${this.host}:${this.port}`].join(
+        '\r\n',
+      ) + '\r\n\r\n\r\n',
+    );
+  }
+
+  async callTcp(method, args: any[] = []) {
     await this._connectPromise;
     const request = this.createRequest(method);
     const header = new YarHeader();
@@ -151,6 +165,10 @@ class YarClient {
     payload.data.write(YAR_PACKAGER, YAR_HEADER_LEN, YAR_PACKAGER_LEN);
     this._readOffset = 0;
     this.conn.write(payload.data);
+  }
+
+  async call(method: string, args: any[] = []) {
+    return this[YarClient.protocolHandlers[this.protocol]](method, args);
   }
 
   packRequest(req: YarRequest, extraBytes: number) {
@@ -209,7 +227,7 @@ class YarClient {
       this._readOffset = YAR_HEADER_LEN;
       const header = this.unpackHeader(this._readBuffer);
       if (header) {
-        this._readHeader = header;
+        this._readHeader = header as YarHeader;
       }
     } else if (
       this._readBuffer.length >=
@@ -265,4 +283,8 @@ class YarClient {
 }
 
 // createClient(8040, '172.17.20.118');
+
+const client = new YarClient('http://www.baidu.com');
+client.callHttp();
+
 export { createServer, createClient };
