@@ -56,12 +56,42 @@ function createClient(port: number, host = '127.0.0.1') {
 }
 
 class YarRequest {
-  id = 1000;
+  id: number;
   method = '';
   out: Buffer;
 
+  constructor() {
+    this.id = Math.floor(-Math.random() * (1 << 31));
+  }
+
   get mlen() {
     return this.method.length;
+  }
+}
+
+interface YarPackager {
+  name: string;
+  pack: (obj: any) => ArrayBufferLike;
+  unpack: (buf: Buffer) => any;
+}
+
+class MSGPACKPackager implements YarPackager {
+  name = 'MSGPACK';
+  pack(obj: any) {
+    return mp.encode(obj).buffer;
+  }
+  unpack(buf: Buffer) {
+    return mp.decode(buf);
+  }
+}
+
+class JSONPackager implements YarPackager {
+  name = 'JSON';
+  pack(obj: any) {
+    return Buffer.from(JSON.stringify(obj)).buffer;
+  }
+  unpack(buf: Buffer) {
+    return JSON.parse(buf.toString());
   }
 }
 
@@ -284,7 +314,7 @@ class YarClient {
 
 // createClient(8040, '172.17.20.118');
 
-const client = new YarClient('http://www.baidu.com');
-client.callHttp();
+/*const client = new YarClient('http://www.baidu.com');
+client.callHttp();*/
 
 export { createServer, createClient };
