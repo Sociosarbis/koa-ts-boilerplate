@@ -1,5 +1,8 @@
 import * as http from 'http';
+import { EventEmitter } from 'events';
+import { IRPCConnection, YarHeader, YarResponse } from './structs';
 import { NODE_YAR_USER_AGENT } from './const';
+import { createDataHandler } from './helpers';
 
 type HTTPConnectionConfig = http.RequestOptions & { persistent?: boolean };
 
@@ -8,9 +11,10 @@ const defaultHeaders = {
   Expect: '',
 };
 
-class HTTPConnection {
+export class HTTPConnection extends EventEmitter implements IRPCConnection {
   conn: http.ClientRequest;
   constructor(config: HTTPConnectionConfig) {
+    super();
     config.headers = Object.assign(
       { Hostname: config.host },
       defaultHeaders,
@@ -31,17 +35,34 @@ class HTTPConnection {
     this.conn.end();
   }
 
+  async write(buf: Buffer | string) {
+    return this.conn.write(buf);
+  }
+
   handleResponse = (response: http.IncomingMessage) => {
-    response.pipe(process.stdout);
+    response.on('data', createDataHandler(this.handleDataUnpacked));
+  };
+
+  handleDataUnpacked = (header: YarHeader, response: YarResponse) => {
+    this.emit('response', {
+      header,
+      response,
+    });
   };
 
   handleError = (err: Error) => {
     console.error('服务器异常：', err);
+    this.emit('error', err);
   };
 
   handleClose = () => {
     console.log('客户端链接断开');
+    this.emit('close');
   };
+
+  destroy() {
+    this.conn.destroy();
+  }
 }
 
 new HTTPConnection({

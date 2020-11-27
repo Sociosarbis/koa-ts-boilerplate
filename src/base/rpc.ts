@@ -1,6 +1,16 @@
 import * as net from 'net';
-import * as mp from '@msgpack/msgpack';
-import { ByteArray } from '@/utils/byteArray';
+import { packHeader } from './rpc/helpers';
+import {
+  YAR_PROTOCOL_MAGIC_NUM,
+  YAR_HEADER_LEN,
+  YAR_PROVIDER,
+  YAR_PACKAGER_LEN,
+  packagers,
+} from './rpc/const';
+import { IYarPackager } from './rpc/packagers';
+import { YarPayload, YarRequest, IRPCConnection } from './rpc/structs';
+import { HTTPConnection } from './rpc/http';
+import { TCPConnection } from './rpc/tcp';
 import * as url from 'url';
 
 function createServer(port: number, host = '127.0.0.1') {
@@ -39,62 +49,6 @@ function createServer(port: number, host = '127.0.0.1') {
   return server;
 }
 
-function createClient(port: number, host = '127.0.0.1') {
-  const client = net.createConnection({
-    host,
-    port,
-  });
-
-  // 例如监听一个未开启的端口就会报 ECONNREFUSED 错误
-  client.on('error', (err) => {
-    console.error('服务器异常：', err);
-  });
-  client.on('close', (err) => {
-    console.log('客户端链接断开！', err);
-  });
-  return client;
-}
-
-class YarRequest {
-  id: number;
-  method = '';
-  out: Buffer;
-
-  constructor() {
-    this.id = Math.floor(-Math.random() * (1 << 31));
-  }
-
-  get mlen() {
-    return this.method.length;
-  }
-}
-
-interface YarPackager {
-  name: string;
-  pack: (obj: any) => ArrayBufferLike;
-  unpack: (buf: Buffer) => any;
-}
-
-class MSGPACKPackager implements YarPackager {
-  name = 'MSGPACK';
-  pack(obj: any) {
-    return mp.encode(obj).buffer;
-  }
-  unpack(buf: Buffer) {
-    return mp.decode(buf);
-  }
-}
-
-class JSONPackager implements YarPackager {
-  name = 'JSON';
-  pack(obj: any) {
-    return Buffer.from(JSON.stringify(obj)).buffer;
-  }
-  unpack(buf: Buffer) {
-    return JSON.parse(buf.toString());
-  }
-}
-
 class YarHeader {
   id = 0;
   version = 0;
@@ -105,100 +59,46 @@ class YarHeader {
   bodyLen = 0;
 }
 
-class YarResponse {
-  id = 0;
-  status = 0;
-  error = '';
-  in: Buffer;
-  payload: YarPayload;
-  out: Buffer;
-  buffer: Buffer;
-
-  get elen() {
-    return this.error.length;
-  }
-}
-
-class YarPayload {
-  data: Buffer;
-
-  get size() {
-    return this.data ? this.data.length : 0;
-  }
-}
-
-const YAR_PROTOCOL_MAGIC_NUM = 0x80dfec60;
-
-const YAR_PROVIDER = 'Yar(Node)-0.0.1';
-
-const YAR_PACKAGER = 'MSGPACK';
-
-const YAR_PACKAGER_LEN = 8;
-
-const YAR_HEADER_LEN = 82;
-
 class YarClient {
-  conn: net.Socket;
+  conn: IRPCConnection;
   protocol: string;
   host: string;
   port: number;
   uri: string;
   persistent = false;
-  connected = false;
-  _readBuffer: Buffer;
-  _readOffset = 0;
-  _readHeader: YarHeader;
-  private _connectPromise: Promise<void>;
-  private _connectRes: () => void;
+  packager: IYarPackager;
 
-  static protocolHandlers = {
-    'tcp:': 'callTcp',
-    'http:': 'callHttp',
+  static protocolConnections = {
+    'tcp:': TCPConnection,
+    'http:': HTTPConnection,
   } as const;
 
-  constructor(uri: string) {
+  constructor(uri: string, options: { packager?: 'JSON' | 'MSGPACK' } = {}) {
     const urlObj = url.parse(uri);
     this.port = urlObj.port ? Number(urlObj.port) : 80;
     this.host = urlObj.host;
+    this.packager = new packagers[options.packager || 'JSON']();
     this.protocol = urlObj.protocol;
     this.uri = urlObj.path || '/';
     this.init();
   }
 
   init() {
-    this.connect();
-    this.conn.on('connect', this.handleConnect);
-    this.conn.on('close', this.handleDisconnect);
-    this.conn.on('data', this.handleResponse);
+    this.conn = new YarClient.protocolConnections[this.host]();
   }
 
-  async callHttp() {
-    await this._connectPromise;
-    this.conn.write(
-      [`GET ${this.uri} HTTP/1.1`, `Host: ${this.host}:${this.port}`].join(
-        '\r\n',
-      ) + '\r\n\r\n\r\n',
-    );
-  }
-
-  async callTcp(method, args: any[] = []) {
-    await this._connectPromise;
+  async call(method, args: any[] = []) {
     const request = this.createRequest(method);
     const header = new YarHeader();
     header.magicNum = YAR_PROTOCOL_MAGIC_NUM;
     header.provider = YAR_PROVIDER;
     header.id = request.id;
     header.reserved = this.persistent ? 1 : 0;
-    request.out = Buffer.from(mp.encode(args).buffer, 0);
+    request.out = Buffer.from(this.packager.pack(args), 0);
     const payload = this.packRequest(request, 100);
-    this.packHeader(header).copy(payload.data, 0, 0);
-    payload.data.write(YAR_PACKAGER, YAR_HEADER_LEN, YAR_PACKAGER_LEN);
-    this._readOffset = 0;
-    this.conn.write(payload.data);
-  }
-
-  async call(method: string, args: any[] = []) {
-    return this[YarClient.protocolHandlers[this.protocol]](method, args);
+    packHeader(header).copy(payload.data, 0, 0);
+    payload.data.write(this.packager.name, YAR_HEADER_LEN, YAR_PACKAGER_LEN);
+    await this.conn.write(payload.data);
   }
 
   packRequest(req: YarRequest, extraBytes: number) {
@@ -207,37 +107,11 @@ class YarClient {
       m: req.method,
       p: req.out,
     };
-    const pk = Buffer.from(mp.encode(requestKeys).buffer, 0);
+    const pk = Buffer.from(this.packager.pack(requestKeys), 0);
     const tmp = new YarPayload();
     tmp.data = Buffer.alloc(extraBytes + pk.length);
     pk.copy(tmp.data, extraBytes, 0, pk.length);
     return tmp;
-  }
-
-  packHeader(header: YarHeader) {
-    const headerPack = new ByteArray(YAR_HEADER_LEN);
-    headerPack.writeUInt(header.id);
-    headerPack.skip(2);
-    headerPack.writeUInt(header.magicNum);
-    headerPack.writeUInt(header.reserved);
-    headerPack.writeStr(header.provider, 32);
-    headerPack.skip(32);
-    headerPack.writeUInt(header.bodyLen);
-    return headerPack.buffer;
-  }
-
-  unpackHeader(buf: Buffer) {
-    const headerPack = ByteArray.from(buf, YAR_HEADER_LEN);
-    const header = new YarHeader();
-    header.id = headerPack.readUInt();
-    headerPack.skip(2);
-    header.magicNum = headerPack.readUInt();
-    if (header.magicNum !== YAR_PROTOCOL_MAGIC_NUM) return false;
-    header.reserved = headerPack.readUInt();
-    header.provider = headerPack.readStr(32);
-    headerPack.skip(32);
-    header.bodyLen = headerPack.readUInt();
-    return header;
   }
 
   createRequest(method: string) {
@@ -246,75 +120,11 @@ class YarClient {
     return request;
   }
 
-  handleResponse = (data: Buffer) => {
-    if (this._readOffset === -1) return;
-    if (!this._readBuffer) {
-      this._readBuffer = data;
-    } else {
-      this._readBuffer = Buffer.concat([this._readBuffer, data]);
-    }
-    if (this._readOffset === 0 && this._readBuffer.length >= YAR_HEADER_LEN) {
-      this._readOffset = YAR_HEADER_LEN;
-      const header = this.unpackHeader(this._readBuffer);
-      if (header) {
-        this._readHeader = header as YarHeader;
-      }
-    } else if (
-      this._readBuffer.length >=
-      YAR_HEADER_LEN + this._readHeader.bodyLen
-    ) {
-      const body = ByteArray.from(
-        this._readBuffer,
-        YAR_HEADER_LEN + this._readHeader.bodyLen,
-        0,
-      );
-      const obj = mp.decode(
-        body.buffer.subarray(YAR_HEADER_LEN + YAR_PACKAGER_LEN),
-      ) as Record<string, any>;
-      const response = new YarResponse();
-      response.id = obj.i;
-      response.status = obj.s;
-      response.error = obj.e;
-      response.in = obj.r.buffer;
-      response.payload = new YarPayload();
-      response.payload.data = body.buffer;
-      this._readOffset = -1;
-      this._readBuffer = null;
-    }
-  };
-
-  connect() {
-    if (this.connected) {
-      this.destroy();
-    }
-    this._createPendingPromise();
-    this.conn = createClient(this.port, this.host);
-  }
-
-  _createPendingPromise() {
-    this._connectPromise = new Promise((res) => {
-      this._connectRes = res;
-    }).then(() => {
-      this.connected = true;
-    });
-  }
-
-  handleConnect = () => {
-    this._connectRes();
-  };
-
-  handleDisconnect = () => {
-    this.connected = false;
-  };
-
   destroy() {
     this.conn.destroy();
   }
 }
 
-// createClient(8040, '172.17.20.118');
+/*const client = new YarClient('http://www.baidu.com');*/
 
-/*const client = new YarClient('http://www.baidu.com');
-client.callHttp();*/
-
-export { createServer, createClient };
+export { createServer, YarClient };
