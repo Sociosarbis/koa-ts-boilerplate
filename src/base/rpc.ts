@@ -11,6 +11,7 @@ import { IYarPackager } from './rpc/packagers';
 import { YarPayload, YarRequest, IRPCConnection } from './rpc/structs';
 import { HTTPConnection } from './rpc/http';
 import { TCPConnection } from './rpc/tcp';
+import { encrypt } from './rpc/mcrypt';
 import * as url from 'url';
 
 function createServer(port: number, host = '127.0.0.1') {
@@ -99,7 +100,7 @@ class YarClient {
     header.provider = YAR_PROVIDER;
     header.id = request.id;
     header.reserved = this.persistent ? 1 : 0;
-    request.out = Buffer.from(this.packager.pack(args), 0);
+    request.out = Buffer.from(this.packager.pack(args), 0).toString();
     const payload = this.packRequest(request, 100);
     packHeader(header).copy(payload.data, 0, 0);
     payload.data.write(this.packager.name, YAR_HEADER_LEN, YAR_PACKAGER_LEN);
@@ -112,7 +113,7 @@ class YarClient {
       m: req.method,
       p: req.out,
     };
-    const pk = Buffer.from(this.packager.pack(requestKeys), 0);
+    const pk = this.packager.pack(requestKeys);
     const tmp = new YarPayload();
     tmp.data = Buffer.alloc(extraBytes + pk.length);
     pk.copy(tmp.data, extraBytes, 0, pk.length);
@@ -131,7 +132,12 @@ class YarClient {
 }
 
 /*const client = new YarClient('http://172.17.20.30/exam/rpc/common', {
-  packager: 'JSON',
-});*/
+  packager: 'MSGPACK',
+});
+client.call('common', [
+  'GetGoodPaperLabel',
+  'sdkfskfk',
+  encrypt(Buffer.from(JSON.stringify({ uid: 1 })), 'sdkfskfk'),
+]);*/
 
 export { createServer, YarClient };

@@ -11,7 +11,7 @@ class YarHeader {
 class YarRequest {
   id: number;
   method = '';
-  out: Buffer;
+  out: Buffer | string;
 
   constructor() {
     this.id = Math.floor(-Math.random() * (1 << 31));

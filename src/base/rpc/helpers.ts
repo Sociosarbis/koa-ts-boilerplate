@@ -59,7 +59,6 @@ function createDataHandler(
   let header: YarHeader = null;
   let buffer: Buffer = null;
   return function handleData(data: Buffer) {
-    if (offset === -1) return;
     if (!buffer) {
       buffer = data;
     } else {

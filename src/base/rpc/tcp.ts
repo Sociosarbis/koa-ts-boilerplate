@@ -8,6 +8,7 @@ type TCPConnectionConfig = net.TcpSocketConnectOpts & { persistent?: boolean };
 export class TCPConnection extends EventEmitter implements IRPCConnection {
   conn: net.Socket;
   connected = false;
+  requesting = false;
   private _connectPromise: Promise<void>;
   private _connectRes: () => void;
   constructor(config: TCPConnectionConfig) {
@@ -38,11 +39,14 @@ export class TCPConnection extends EventEmitter implements IRPCConnection {
   }
 
   async write(buf: Buffer | string) {
+    if (this.requesting) return false;
     await this._connectPromise;
+    this.requesting = true;
     return this.conn.write(buf);
   }
 
   handleDataUnpacked = (header: YarHeader, response: YarResponse) => {
+    this.requesting = false;
     this.emit('response', {
       header,
       response,
@@ -54,17 +58,20 @@ export class TCPConnection extends EventEmitter implements IRPCConnection {
   };
 
   handleError = (err: Error) => {
+    this.requesting = false;
     console.error('服务器异常：', err);
     this.emit('error', err);
   };
 
   handleClose = () => {
+    this.requesting = false;
     console.log('客户端链接断开');
     this.connected = false;
     this.emit('close');
   };
 
   destroy() {
+    this.requesting = false;
     this.conn.destroy();
   }
 }
