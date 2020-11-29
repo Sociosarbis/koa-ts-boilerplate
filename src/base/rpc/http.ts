@@ -32,7 +32,6 @@ export class HTTPConnection extends EventEmitter implements IRPCConnection {
     this.conn.on('response', this.handleResponse);
     this.conn.on('close', this.handleClose);
     this.conn.on('error', this.handleError);
-    this.conn.end();
   }
 
   async write(buf: Buffer | string) {
