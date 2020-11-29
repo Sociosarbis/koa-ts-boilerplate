@@ -67,7 +67,7 @@ function createDataHandler(
     }
     if (offset === 0 && buffer.length >= YAR_HEADER_LEN) {
       offset = YAR_HEADER_LEN;
-      const mayBeHeader = unpackHeader(this._readBuffer);
+      const mayBeHeader = unpackHeader(buffer);
       if (mayBeHeader) {
         header = mayBeHeader;
       }

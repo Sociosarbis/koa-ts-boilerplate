@@ -64,7 +64,3 @@ export class HTTPConnection extends EventEmitter implements IRPCConnection {
     this.conn.destroy();
   }
 }
-
-new HTTPConnection({
-  host: 'www.baidu.com',
-});

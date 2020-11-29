@@ -84,7 +84,12 @@ class YarClient {
   }
 
   init() {
-    this.conn = new YarClient.protocolConnections[this.host]();
+    this.conn = new YarClient.protocolConnections[this.protocol]({
+      host: this.host,
+      port: this.port,
+      path: this.uri,
+      persistent: this.persistent,
+    });
   }
 
   async call(method, args: any[] = []) {
@@ -125,6 +130,8 @@ class YarClient {
   }
 }
 
-/*const client = new YarClient('http://www.baidu.com');*/
+/*const client = new YarClient('http://172.17.20.30/exam/rpc/common', {
+  packager: 'JSON',
+});*/
 
 export { createServer, YarClient };
