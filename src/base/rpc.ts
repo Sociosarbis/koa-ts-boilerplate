@@ -100,8 +100,11 @@ class YarClient {
     header.provider = YAR_PROVIDER;
     header.id = request.id;
     header.reserved = this.persistent ? 1 : 0;
-    request.out = Buffer.from(this.packager.pack(args), 0).toString();
-    const payload = this.packRequest(request, 100);
+    request.out = args;
+    const payload = this.packRequest(
+      request,
+      YAR_HEADER_LEN + YAR_PACKAGER_LEN,
+    );
     packHeader(header).copy(payload.data, 0, 0);
     payload.data.write(this.packager.name, YAR_HEADER_LEN, YAR_PACKAGER_LEN);
     await this.conn.write(payload.data);
@@ -132,12 +135,13 @@ class YarClient {
 }
 
 /*const client = new YarClient('http://172.17.20.30/exam/rpc/common', {
-  packager: 'MSGPACK',
+  packager: 'JSON',
 });
+
 client.call('common', [
-  'GetGoodPaperLabel',
-  'sdkfskfk',
-  encrypt(Buffer.from(JSON.stringify({ uid: 1 })), 'sdkfskfk'),
+  'getGoodPaperLabel',
+  'ad8a7fda5270718621a69b86676f5856',
+  encrypt(Buffer.from(JSON.stringify({ uid: 201816870 })), 'sdkfskfk'),
 ]);*/
 
 export { createServer, YarClient };

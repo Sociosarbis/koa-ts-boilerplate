@@ -1,4 +1,5 @@
 import { ByteArray } from '@/utils/byteArray';
+import { Console } from 'console';
 import {
   YAR_PROTOCOL_MAGIC_NUM,
   YAR_HEADER_LEN,
@@ -37,7 +38,9 @@ function packHeader(header: YarHeader) {
 function unpackResponse(buf: Buffer) {
   const packagerName = buf
     .subarray(YAR_HEADER_LEN, YAR_HEADER_LEN + YAR_PACKAGER_LEN)
-    .toString();
+    .toString()
+    /** 以 \0为 name的终止标志 */
+    .replace(/\u0000+.*$/, '');
   const packager: IYarPackager = new packagers[packagerName]();
   const obj = packager.unpack(
     buf.subarray(YAR_HEADER_LEN + YAR_PACKAGER_LEN),
@@ -46,9 +49,10 @@ function unpackResponse(buf: Buffer) {
   response.id = obj.i;
   response.status = obj.s;
   response.error = obj.e;
-  response.in = obj.r.buffer;
+  response.in = obj.r;
   response.payload = new YarPayload();
   response.payload.data = buf;
+  console.log(response);
   return response;
 }
 
@@ -64,15 +68,18 @@ function createDataHandler(
     } else {
       buffer = Buffer.concat([buffer, data]);
     }
+
     if (offset === 0 && buffer.length >= YAR_HEADER_LEN) {
       offset = YAR_HEADER_LEN;
       const mayBeHeader = unpackHeader(buffer);
       if (mayBeHeader) {
         header = mayBeHeader;
       }
-    } else if (buffer.length >= YAR_HEADER_LEN + header.bodyLen) {
+    }
+
+    if (buffer.length >= YAR_HEADER_LEN + header.bodyLen) {
       const response = unpackResponse(
-        buffer.subarray(0, YAR_HEADER_LEN + this._readHeader.bodyLen),
+        buffer.subarray(0, YAR_HEADER_LEN + header.bodyLen),
       );
       cb(header, response);
       offset = 0;

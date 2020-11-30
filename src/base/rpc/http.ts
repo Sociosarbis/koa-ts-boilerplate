@@ -28,6 +28,7 @@ export class HTTPConnection extends EventEmitter implements IRPCConnection {
             Connection: 'close',
           },
     );
+    config.method = 'POST';
     this.conn = http.request(config);
     this.conn.on('response', this.handleResponse);
     this.conn.on('close', this.handleClose);
@@ -35,7 +36,9 @@ export class HTTPConnection extends EventEmitter implements IRPCConnection {
   }
 
   async write(buf: Buffer | string) {
-    return this.conn.write(buf);
+    const isSuccess = this.conn.write(buf);
+    this.conn.end();
+    return isSuccess;
   }
 
   handleResponse = (response: http.IncomingMessage) => {
