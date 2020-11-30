@@ -1,5 +1,4 @@
 import { ByteArray } from '@/utils/byteArray';
-import { Console } from 'console';
 import {
   YAR_PROTOCOL_MAGIC_NUM,
   YAR_HEADER_LEN,
@@ -52,7 +51,6 @@ function unpackResponse(buf: Buffer) {
   response.in = obj.r;
   response.payload = new YarPayload();
   response.payload.data = buf;
-  console.log(response);
   return response;
 }
 
