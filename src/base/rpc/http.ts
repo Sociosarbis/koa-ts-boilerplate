@@ -1,6 +1,6 @@
 import * as http from 'http';
-import { EventEmitter } from 'events';
-import { IRPCConnection, YarHeader, YarResponse } from './structs';
+import { BaseConnection } from './connections/base';
+import { IRPCConnection } from './structs';
 import { NODE_YAR_USER_AGENT } from './const';
 import { createDataHandler } from './helpers';
 
@@ -11,8 +11,9 @@ const defaultHeaders = {
   Expect: '',
 };
 
-export class HTTPConnection extends EventEmitter implements IRPCConnection {
+export class HTTPConnection extends BaseConnection implements IRPCConnection {
   conn: http.ClientRequest;
+  config: HTTPConnectionConfig;
   constructor(config: HTTPConnectionConfig) {
     super();
     config.headers = Object.assign(
@@ -29,27 +30,27 @@ export class HTTPConnection extends EventEmitter implements IRPCConnection {
           },
     );
     config.method = 'POST';
-    this.conn = http.request(config);
+    config.agent = new http.Agent({
+      keepAlive: config.persistent,
+    });
+    this.config = config;
+  }
+
+  async connect(
+    cb: (conn: http.ClientRequest) => Promise<any> = () => Promise.resolve(),
+  ) {
+    this.conn = http.request(this.config);
+    this.waitForResponse();
     this.conn.on('response', this.handleResponse);
     this.conn.on('close', this.handleClose);
     this.conn.on('error', this.handleError);
-  }
-
-  async write(buf: Buffer | string) {
-    const isSuccess = this.conn.write(buf);
+    await cb(this.conn);
     this.conn.end();
-    return isSuccess;
+    return this;
   }
 
   handleResponse = (response: http.IncomingMessage) => {
-    response.on('data', createDataHandler(this.handleDataUnpacked));
-  };
-
-  handleDataUnpacked = (header: YarHeader, response: YarResponse) => {
-    this.emit('response', {
-      header,
-      response,
-    });
+    response.on('data', createDataHandler(this._responseResolver));
   };
 
   handleError = (err: Error) => {

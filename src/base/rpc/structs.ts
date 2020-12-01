@@ -1,3 +1,5 @@
+import { EventEmitter } from 'events';
+import { AnyFunc } from '@/base/types';
 class YarHeader {
   id = 0;
   version = 0;
@@ -44,9 +46,12 @@ class YarPayload {
   }
 }
 
-interface IRPCConnection {
-  write(buf: Buffer | string): Promise<boolean>;
+interface IRPCConnection extends EventEmitter {
+  response: Promise<{ header: YarHeader; response: YarResponse }>;
   destroy(): void;
+  connect(
+    cb: (conn: { write: AnyFunc }) => Promise<any>,
+  ): Promise<IRPCConnection>;
 }
 
 export { YarHeader, YarResponse, YarPayload, IRPCConnection, YarRequest };

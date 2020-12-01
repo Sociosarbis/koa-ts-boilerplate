@@ -3,4 +3,6 @@ import { RouterContext } from 'koa-router';
 
 type AppContext = Context & RouterContext;
 
-export { AppContext };
+type AnyFunc<T = any> = (...args: any[]) => T;
+
+export { AppContext, AnyFunc };

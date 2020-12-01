@@ -1,33 +1,36 @@
 import * as net from 'net';
-import { EventEmitter } from 'events';
+import { BaseConnection } from './connections/base';
 import { createDataHandler } from './helpers';
-import { YarHeader, IRPCConnection, YarResponse } from './structs';
+import { IRPCConnection } from './structs';
 
 type TCPConnectionConfig = net.TcpSocketConnectOpts & { persistent?: boolean };
 
-export class TCPConnection extends EventEmitter implements IRPCConnection {
+export class TCPConnection extends BaseConnection implements IRPCConnection {
   conn: net.Socket;
+  config: TCPConnectionConfig;
   connected = false;
   requesting = false;
   private _connectPromise: Promise<void>;
   private _connectRes: () => void;
   constructor(config: TCPConnectionConfig) {
     super();
+    this.config = config;
     this.conn = net.createConnection({
-      host: config.host,
-      port: config.port,
+      host: this.config.host,
+      port: this.config.port,
     });
+    this.waitForResponse();
     this.conn.on('connect', this.handleConnect);
-    this.conn.on('data', createDataHandler(this.handleDataUnpacked));
+    this.conn.on('data', createDataHandler(this._responseResolver));
     this.conn.on('close', this.handleClose);
     this.conn.on('error', this.handleError);
+    this._createPendingPromise();
   }
 
-  connect() {
-    if (this.connected) {
-      this.destroy();
-    }
-    this._createPendingPromise();
+  async connect(cb: (conn: net.Socket) => Promise<any>) {
+    await this._connectPromise;
+    await cb(this.conn);
+    return this;
   }
 
   _createPendingPromise() {
@@ -37,21 +40,6 @@ export class TCPConnection extends EventEmitter implements IRPCConnection {
       this.connected = true;
     });
   }
-
-  async write(buf: Buffer | string) {
-    if (this.requesting) return false;
-    await this._connectPromise;
-    this.requesting = true;
-    return this.conn.write(buf);
-  }
-
-  handleDataUnpacked = (header: YarHeader, response: YarResponse) => {
-    this.requesting = false;
-    this.emit('response', {
-      header,
-      response,
-    });
-  };
 
   handleConnect = () => {
     this._connectRes();

@@ -8,6 +8,10 @@ import {
 import { IYarPackager } from './packagers';
 import { YarHeader, YarPayload, YarResponse } from './structs';
 
+function removeZeroTrail(str: string) {
+  return str.replace(/\u0000+.*$/, '');
+}
+
 function unpackHeader(buf: Buffer) {
   const headerPack = ByteArray.from(buf, YAR_HEADER_LEN);
   const header = new YarHeader();
@@ -16,7 +20,7 @@ function unpackHeader(buf: Buffer) {
   header.magicNum = headerPack.readUInt();
   if (header.magicNum !== YAR_PROTOCOL_MAGIC_NUM) return false;
   header.reserved = headerPack.readUInt();
-  header.provider = headerPack.readStr(32);
+  header.provider = removeZeroTrail(headerPack.readStr(32));
   headerPack.skip(32);
   header.bodyLen = headerPack.readUInt();
   return header;
@@ -35,11 +39,9 @@ function packHeader(header: YarHeader) {
 }
 
 function unpackResponse(buf: Buffer) {
-  const packagerName = buf
-    .subarray(YAR_HEADER_LEN, YAR_HEADER_LEN + YAR_PACKAGER_LEN)
-    .toString()
-    /** 以 \0为 name的终止标志 */
-    .replace(/\u0000+.*$/, '');
+  const packagerName = removeZeroTrail(
+    buf.subarray(YAR_HEADER_LEN, YAR_HEADER_LEN + YAR_PACKAGER_LEN).toString(),
+  );
   const packager: IYarPackager = new packagers[packagerName]();
   const obj = packager.unpack(
     buf.subarray(YAR_HEADER_LEN + YAR_PACKAGER_LEN),
@@ -55,7 +57,7 @@ function unpackResponse(buf: Buffer) {
 }
 
 function createDataHandler(
-  cb: (header?: YarHeader, response?: YarResponse) => any,
+  cb: (i: { header?: YarHeader; response?: YarResponse } | Error) => any,
 ) {
   let offset = 0;
   let header: YarHeader = null;
@@ -79,7 +81,7 @@ function createDataHandler(
       const response = unpackResponse(
         buffer.subarray(0, YAR_HEADER_LEN + header.bodyLen),
       );
-      cb(header, response);
+      cb({ header, response });
       offset = 0;
       buffer = null;
     }

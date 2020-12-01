@@ -74,12 +74,16 @@ class YarClient {
     'http:': HTTPConnection,
   } as const;
 
-  constructor(uri: string, options: { packager?: 'JSON' | 'MSGPACK' } = {}) {
+  constructor(
+    uri: string,
+    options: { packager?: 'JSON' | 'MSGPACK'; persistent?: boolean } = {},
+  ) {
     const urlObj = url.parse(uri);
     this.port = urlObj.port ? Number(urlObj.port) : 80;
     this.host = urlObj.host;
     this.packager = new packagers[options.packager || 'JSON']();
     this.protocol = urlObj.protocol;
+    this.persistent = Boolean(options.persistent);
     this.uri = urlObj.path || '/';
     this.init();
   }
@@ -107,7 +111,11 @@ class YarClient {
     );
     packHeader(header).copy(payload.data, 0, 0);
     payload.data.write(this.packager.name, YAR_HEADER_LEN, YAR_PACKAGER_LEN);
-    await this.conn.write(payload.data);
+    return (
+      await this.conn.connect(async (conn) => {
+        conn.write(payload.data);
+      })
+    ).response;
   }
 
   packRequest(req: YarRequest, extraBytes: number) {
@@ -134,14 +142,15 @@ class YarClient {
   }
 }
 
-/*const client = new YarClient('http://172.17.20.30/exam/rpc/common', {
+const client = new YarClient('http://172.17.20.30/exam/rpc/common', {
   packager: 'JSON',
+  persistent: true,
 });
 
 client.call('common', [
   'getGoodPaperLabel',
   'ad8a7fda5270718621a69b86676f5856',
   encrypt(Buffer.from(JSON.stringify({ uid: 201816870 })), 'sdkfskfk'),
-]);*/
+]);
 
 export { createServer, YarClient };
