@@ -1,0 +1,14 @@
+{
+  "name": "wasm-md5",
+  "version": "1.0.0",
+  "description": "wasm module of md5",
+  "main": "md5.js",
+  "module": "md5.js",
+  "files": [
+    "md5_bg.*",
+    "md5.*"
+  ],
+  "author": "sociosarbis",
+  "typings": "md5.d.ts",
+  "license": "MIT"
+}
