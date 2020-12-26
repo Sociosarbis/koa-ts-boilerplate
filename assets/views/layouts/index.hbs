@@ -4,9 +4,10 @@
 <p>views: {{ views }}</p>
 <form method="POST" action="/file/upload" enctype="multipart/form-data">
   <input name="filename" />
-  <input name="file" type="file" />
+  <input class="single-file" name="file" type="file" onchange="sliceUpload(this.files[0]);" />
   <input name="files" type="file" multiple />
   <input type="submit" />
 </form>
+<script src="/static/js/sliceUpload.js"></script>
 {{/inline}}
 {{> (partial "index.base.hbs") }}

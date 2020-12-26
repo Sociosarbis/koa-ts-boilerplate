@@ -1,10 +1,12 @@
 import appService from './app.service';
-import { Get, Post } from '@/common/decorators/request';
+import { Get, Post, Put } from '@/common/decorators/request';
 import Compose from '@/common/decorators/compose';
 import jwtMiddlew, { sign } from '@/common/middlewares/jwt';
 import { Controller } from '@/common/decorators/controller';
 import { BaseController } from '@/base/controller';
 import { AppContext } from '@/base/types';
+import { createReadStream, createWriteStream } from 'fs';
+import { mkdir, stat } from '@/utils/io';
 
 @Controller()
 export class AppController extends BaseController {
@@ -49,5 +51,23 @@ export class AppController extends BaseController {
         username: 'sociosarbis',
       }),
     };
+  }
+
+  @Put('uploadSlice')
+  async uploadSlice(ctx: AppContext) {
+    const [name] = ctx.request.body.name.split('_');
+    const stats = await stat(`./resource/${name}`);
+    if (!stats.isDirectory()) {
+      await mkdir(`./resource/${name}`, { recursive: true });
+    }
+    const writable = createWriteStream(
+      `./resource/${name}/${ctx.request.body.name}`,
+    );
+    createReadStream(ctx.request.files.data.path).pipe(writable);
+    ctx.body = await new Promise((res) => {
+      writable.on('finish', () => {
+        res({ status: 0 });
+      });
+    });
   }
 }

@@ -1,4 +1,4 @@
-import handlebars, { TemplateDelegate, HelperOptions } from 'handlebars';
+import handlebars, { TemplateDelegate } from 'handlebars';
 import { Context, Next } from 'koa';
 import * as glob from 'globby';
 import * as path from 'path';
@@ -98,7 +98,8 @@ export default function hbs({
           },
         });
       };
-      next();
+      // 必须await next，不然会不等待next，直接就返回了
+      await next();
     };
   }
 }
