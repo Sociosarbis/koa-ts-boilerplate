@@ -5,8 +5,8 @@ import jwtMiddlew, { sign } from '@/common/middlewares/jwt';
 import { Controller } from '@/common/decorators/controller';
 import { BaseController } from '@/base/controller';
 import { AppContext } from '@/base/types';
-import { createReadStream, createWriteStream } from 'fs';
-import { mkdir, stat } from '@/utils/io';
+import { createReadStream, createWriteStream, Stats } from 'fs';
+import { mkdir, stat, rm } from '@/utils/io';
 
 @Controller()
 export class AppController extends BaseController {
@@ -56,18 +56,10 @@ export class AppController extends BaseController {
   @Put('uploadSlice')
   async uploadSlice(ctx: AppContext) {
     const [name] = ctx.request.body.name.split('_');
-    const stats = await stat(`./resource/${name}`);
-    if (!stats.isDirectory()) {
-      await mkdir(`./resource/${name}`, { recursive: true });
-    }
-    const writable = createWriteStream(
+    await appService.copyFile(
+      ctx.request.files.data.path,
       `./resource/${name}/${ctx.request.body.name}`,
     );
-    createReadStream(ctx.request.files.data.path).pipe(writable);
-    ctx.body = await new Promise((res) => {
-      writable.on('finish', () => {
-        res({ status: 0 });
-      });
-    });
+    ctx.body = { status: 0 };
   }
 }
