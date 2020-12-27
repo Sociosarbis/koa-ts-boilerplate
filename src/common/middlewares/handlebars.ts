@@ -92,11 +92,20 @@ export default function hbs({
         const renderFn = handlebars.compile(
           readTemplate(layoutsDir, viewPath, extname),
         );
-        ctx.body = renderFn(locals, {
-          helpers: {
-            partial: partialHelper,
-          },
-        });
+
+        // 因为第一次渲染的时候，partial没有注册，所以可能会报错提示找不到partial
+        function renderWithRetry() {
+          try {
+            return renderFn(locals, {
+              helpers: {
+                partial: partialHelper,
+              },
+            });
+          } catch (e) {
+            return renderWithRetry();
+          }
+        }
+        ctx.body = renderWithRetry();
       };
       // 必须await next，不然会不等待next，直接就返回了
       await next();
