@@ -20,13 +20,27 @@ function myFetch(url, opts = {}, onProgress) {
   });
 }
 
-function sliceUpload(file) {
-  const name = file.name;
-  const slices = chunks(file, SIZE_PER_SLICE).map((item, i) => ({
+window.sliceUpload = async function sliceUpload(file) {
+  let slices = chunks(file, SIZE_PER_SLICE);
+
+  var worker = new Worker('/static/js/md5Worker.js', {
+    type: 'module',
+  });
+
+  worker.postMessage(slices);
+
+  const name = await new Promise((res) => {
+    worker.onmessage = (e) => {
+      res(e.data);
+    };
+  });
+
+  slices = chunks(file, SIZE_PER_SLICE).map((item, i) => ({
     name: `${name}_${i}`,
     data: item,
   }));
-  const uploadTasks = Promise.all(
+
+  await Promise.all(
     slices.map((s) => {
       const form = new FormData();
       form.append('name', s.name);
@@ -43,5 +57,6 @@ function sliceUpload(file) {
       );
     }),
   );
-  console.log(uploadTasks);
-}
+};
+
+export default sliceUpload;
