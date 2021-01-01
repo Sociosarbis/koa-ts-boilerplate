@@ -4,7 +4,16 @@ import { promisify } from 'util';
 const writeFile = promisify(fs.writeFile);
 const mkdir = promisify(fs.mkdir);
 const readFile = promisify(fs.readFile);
-const stat = promisify(fs.stat);
+const fsStat = promisify(fs.stat);
+const readdir = promisify(fs.readdir);
 const rm = promisify(fs.rm);
 
-export { writeFile, mkdir, readFile, stat, rm };
+async function stat(src: string) {
+  let stats: fs.Stats = null;
+  try {
+    stats = await fsStat(src);
+  } catch (e) {}
+  return stats;
+}
+
+export { writeFile, mkdir, readFile, stat, rm, readdir };

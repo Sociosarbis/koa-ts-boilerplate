@@ -16,9 +16,15 @@ onmessage = (e) => {
   ready.then(async (JsMd5) => {
     const md5 = JsMd5.new();
     for (let item of e.data) {
-      md5.update_u8(new Uint8Array(await item.arrayBuffer()));
+      md5.update_u8(new Uint8Array(item));
     }
-    postMessage(md5.finish());
+    postMessage(
+      {
+        name: md5.finish(),
+        data: e.data,
+      },
+      e.data,
+    );
     md5.free();
   });
 };

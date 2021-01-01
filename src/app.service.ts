@@ -8,11 +8,8 @@ export class AppService {
   }
 
   async copyFile(src: string, destPath: string) {
-    let stats: Stats = null;
     const dir = dirname(destPath);
-    try {
-      stats = await stat(dir);
-    } catch (e) {}
+    const stats: Stats = await stat(dir);
     if (stats && !stats.isDirectory()) {
       await rm(dir);
     }

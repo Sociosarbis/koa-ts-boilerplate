@@ -23,21 +23,23 @@ function myFetch(url, opts = {}, onProgress) {
 window.sliceUpload = async function sliceUpload(file) {
   let slices = chunks(file, SIZE_PER_SLICE);
 
+  let buffers = await Promise.all(slices.map((chunk) => chunk.arrayBuffer()));
+
   var worker = new Worker('/static/js/md5Worker.js', {
     type: 'module',
   });
 
-  worker.postMessage(slices);
+  worker.postMessage(buffers, buffers);
 
-  const name = await new Promise((res) => {
+  const { name, data } = await new Promise((res) => {
     worker.onmessage = (e) => {
       res(e.data);
     };
   });
 
-  slices = chunks(file, SIZE_PER_SLICE).map((item, i) => ({
+  slices = data.map((item, i) => ({
     name: `${name}_${i}`,
-    data: item,
+    data: new Blob([item]),
   }));
 
   await Promise.all(
@@ -56,6 +58,20 @@ window.sliceUpload = async function sliceUpload(file) {
         },
       );
     }),
+  );
+
+  const form = new FormData();
+  form.append('name', file.name);
+  form.append('hash', name);
+  await myFetch(
+    '/mergeFile',
+    {
+      method: 'POST',
+      body: form,
+    },
+    (e) => {
+      console.log(e);
+    },
   );
 };
 

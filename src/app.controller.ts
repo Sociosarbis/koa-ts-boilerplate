@@ -5,8 +5,8 @@ import jwtMiddlew, { sign } from '@/common/middlewares/jwt';
 import { Controller } from '@/common/decorators/controller';
 import { BaseController } from '@/base/controller';
 import { AppContext } from '@/base/types';
-import { createReadStream, createWriteStream, Stats } from 'fs';
-import { mkdir, stat, rm } from '@/utils/io';
+import { createReadStream, createWriteStream } from 'fs';
+import { mkdir, stat, rm, readdir } from '@/utils/io';
 
 @Controller()
 export class AppController extends BaseController {
@@ -61,5 +61,44 @@ export class AppController extends BaseController {
       `./resource/${name}/${ctx.request.body.name}`,
     );
     ctx.body = { status: 0 };
+  }
+
+  @Post('mergeFile')
+  async mergeFile(ctx: AppContext) {
+    const { hash, name } = ctx.request.body;
+    const stats = await stat(`./resource/${hash}`);
+    if (stats && stats.isDirectory()) {
+      try {
+        await Promise.all(
+          (await readdir(`./resource/${hash}`)).map(async (f) => {
+            const stats = await stat(`./resource/${hash}/${f}`);
+            if (stats && stats.isFile()) {
+              const [_, i] = f.split('_');
+              if (!isNaN(Number(i))) {
+                await mkdir(`./resource/output`, { recursive: true });
+                await new Promise((res, rej) => {
+                  createReadStream(`./resource/${hash}/${f}`).pipe(
+                    createWriteStream(`./resource/output/${name}`, {
+                      start: 1e6 * Number(i),
+                    })
+                      .on('finish', res)
+                      .on('error', rej),
+                  );
+                });
+              }
+            }
+          }),
+        );
+        ctx.body = {
+          status: 0,
+        };
+        return;
+      } catch (e) {
+        //
+      }
+    }
+    ctx.body = {
+      status: 1,
+    };
   }
 }
