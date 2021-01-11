@@ -35,7 +35,7 @@ export class TCPConnection extends BaseConnection implements IRPCConnection {
 
   _createPendingPromise() {
     this._connectPromise = new Promise((res) => {
-      this._connectRes = res;
+      this._connectRes = res as () => void;
     }).then(() => {
       this.connected = true;
     });

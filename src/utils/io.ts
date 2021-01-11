@@ -6,7 +6,7 @@ const mkdir = promisify(fs.mkdir);
 const readFile = promisify(fs.readFile);
 const fsStat = promisify(fs.stat);
 const readdir = promisify(fs.readdir);
-const rm = promisify(fs.rm);
+const rm = promisify(fs.unlink);
 
 async function stat(src: string) {
   let stats: fs.Stats = null;

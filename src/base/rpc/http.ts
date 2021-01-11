@@ -4,7 +4,10 @@ import { IRPCConnection } from './structs';
 import { NODE_YAR_USER_AGENT } from './const';
 import { createDataHandler } from './helpers';
 
-type HTTPConnectionConfig = http.RequestOptions & { persistent?: boolean };
+type HTTPConnectionConfig = http.RequestOptions & {
+  persistent?: boolean;
+  connTimeout?: number;
+};
 
 const defaultHeaders = {
   'User-Agent': NODE_YAR_USER_AGENT,
@@ -30,16 +33,16 @@ export class HTTPConnection extends BaseConnection implements IRPCConnection {
           },
     );
     config.method = 'POST';
-    config.agent = new http.Agent({
-      keepAlive: config.persistent,
-    });
     this.config = config;
   }
 
   async connect(
     cb: (conn: http.ClientRequest) => Promise<any> = () => Promise.resolve(),
   ) {
-    this.conn = http.request(this.config);
+    const config = Object.assign({}, this.config);
+    config.timeout = this.config.connTimeout;
+    this.conn = http.request(config);
+    this.conn.setTimeout(this.config.timeout);
     this.waitForResponse();
     this.conn.on('response', this.handleResponse);
     this.conn.on('close', this.handleClose);

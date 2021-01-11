@@ -12,6 +12,7 @@ import { YarPayload, YarRequest, IRPCConnection } from './rpc/structs';
 import { HTTPConnection } from './rpc/http';
 import { TCPConnection } from './rpc/tcp';
 import { encrypt } from './rpc/mcrypt';
+import { resolveConfig } from './rpc/rpcConfig';
 import * as url from 'url';
 
 function createServer(port: number, host = '127.0.0.1') {
@@ -67,6 +68,8 @@ class YarClient {
   port: number;
   uri: string;
   persistent = false;
+  timeout: number;
+  connTimeout: number;
   packager: IYarPackager;
 
   static protocolConnections = {
@@ -76,14 +79,21 @@ class YarClient {
 
   constructor(
     uri: string,
-    options: { packager?: 'JSON' | 'MSGPACK'; persistent?: boolean } = {},
+    options: {
+      packager?: 'JSON' | 'MSGPACK';
+      persistent?: boolean;
+      timeout?: number;
+      connTimeout?: number;
+    } = {},
   ) {
     const urlObj = url.parse(uri);
     this.port = urlObj.port ? Number(urlObj.port) : 80;
-    this.host = urlObj.host;
+    this.host = urlObj.hostname;
     this.packager = new packagers[options.packager || 'JSON']();
     this.protocol = urlObj.protocol;
     this.persistent = Boolean(options.persistent);
+    this.timeout = isNaN(options.timeout) ? 1000 : options.timeout;
+    this.connTimeout = isNaN(options.connTimeout) ? 1000 : options.connTimeout;
     this.uri = urlObj.path || '/';
     this.init();
   }
@@ -94,6 +104,8 @@ class YarClient {
       port: this.port,
       path: this.uri,
       persistent: this.persistent,
+      timeout: this.timeout,
+      connTime: this.connTimeout,
     });
   }
 
@@ -142,15 +154,26 @@ class YarClient {
   }
 }
 
-const client = new YarClient('http://172.17.20.30/exam/rpc/common', {
-  packager: 'JSON',
-  persistent: true,
-});
+async function request(app: string, api: string, params: Record<string, any>) {
+  const apps = await resolveConfig();
+  if (app in apps && apps[app].apis.has(api)) {
+    const m = apps[app];
+    const client = new YarClient(`http://${m.host}:${m.port}${m.url}`, {
+      packager: 'JSON',
+      persistent: true,
+      connTimeout: m.connTimeout,
+      timeout: m.timeout,
+    });
+    return client.call('common', [
+      api,
+      m.token,
+      encrypt(Buffer.from(JSON.stringify(params)), m.cipherKey),
+    ]);
+  }
+  return {
+    status: 1,
+    err_msg: `RPC API ${app}::${api} not Found`,
+  };
+}
 
-client.call('common', [
-  'getGoodPaperLabel',
-  'ad8a7fda5270718621a69b86676f5856',
-  encrypt(Buffer.from(JSON.stringify({ uid: 201816870 })), 'sdkfskfk'),
-]);
-
-export { createServer, YarClient };
+export { createServer, YarClient, request };
