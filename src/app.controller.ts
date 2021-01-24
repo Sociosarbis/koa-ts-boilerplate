@@ -5,8 +5,9 @@ import jwtMiddlew, { sign } from '@/common/middlewares/jwt';
 import { Controller } from '@/common/decorators/controller';
 import { BaseController } from '@/base/controller';
 import { AppContext } from '@/base/types';
-import { createReadStream, createWriteStream } from 'fs';
-import { mkdir, stat, rm, readdir } from '@/utils/io';
+import { createReadStream, createWriteStream, WriteStream } from 'fs';
+import { mkdir, stat, readdir } from '@/utils/io';
+import { File } from 'formidable';
 
 @Controller()
 export class AppController extends BaseController {
@@ -57,7 +58,7 @@ export class AppController extends BaseController {
   async uploadSlice(ctx: AppContext) {
     const [name] = ctx.request.body.name.split('_');
     await appService.copyFile(
-      ctx.request.files.data.path,
+      (ctx.request.files.data as File).path,
       `./resource/${name}/${ctx.request.body.name}`,
     );
     ctx.body = { status: 0 };
@@ -82,7 +83,7 @@ export class AppController extends BaseController {
                       start: 1e6 * Number(i),
                     })
                       .on('finish', res)
-                      .on('error', rej),
+                      .on('error', rej) as any,
                   );
                 });
               }
