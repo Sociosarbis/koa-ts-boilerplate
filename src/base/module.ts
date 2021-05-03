@@ -28,7 +28,7 @@ export class BaseModule extends Koa {
           ? p()
           : new p();
         if (inst instanceof Queue) {
-          this.queueMap[inst.name] = p;
+          this.queueMap[inst.name] = inst;
         } else {
           this.handleProcessor(p);
         }
@@ -37,10 +37,10 @@ export class BaseModule extends Koa {
   }
 
   protected handleProcessor(p) {
-    const queueName = Reflect.getMetadata(PROCESSOR_METADATA, p.constructor);
+    const queueName = Reflect.getMetadata(PROCESSOR_METADATA, p);
     if (queueName && queueName in this.queueMap) {
-      const proto = p.constructor.prototype;
-      const propKeys = Object.getOwnPropertyNames(p.constructor.prototype);
+      const proto = p.prototype;
+      const propKeys = Object.getOwnPropertyNames(p.prototype);
       propKeys.forEach((k) => {
         const jobName = Reflect.getMetadata(PROCESS_METADATA, proto, k);
         if (jobName) {

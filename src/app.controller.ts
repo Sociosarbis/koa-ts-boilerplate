@@ -5,7 +5,7 @@ import jwtMiddlew, { sign } from '@/common/middlewares/jwt';
 import { Controller } from '@/common/decorators/controller';
 import { BaseController } from '@/base/controller';
 import { AppContext } from '@/base/types';
-import { createReadStream, createWriteStream, WriteStream } from 'fs';
+import { createReadStream, createWriteStream } from 'fs';
 import { mkdir, stat, readdir } from '@/utils/io';
 import { File } from 'formidable';
 

@@ -1,9 +1,13 @@
 import { CLASS_FACTORY_METADATA } from '@/base/consts';
-interface ICtor<T> {
-  new (...args: any[]): T;
+
+interface Constructor {
+  new (...args: any[]): any;
 }
 
-export default function makeClassFactory<T>(Ctor: ICtor<T>, ...args: any[]) {
+export default function makeClassFactory<T extends Constructor>(
+  Ctor: T,
+  ...args: ConstructorParameters<T>
+) {
   const classFactory = () => {
     return new Ctor(...args);
   };

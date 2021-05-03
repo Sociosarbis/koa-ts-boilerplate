@@ -6,7 +6,10 @@ import { FileProcessor } from './file.processor';
 import makeClassFactory from '@/common/makeClassFactory';
 
 @Module({
-  providers: [makeClassFactory(Queue, 'file'), FileProcessor],
+  providers: [
+    makeClassFactory(Queue, 'file', 'redis://172.22.9.101:6379'),
+    FileProcessor,
+  ],
   controllers: [new FileController()],
 })
 export class FileModule extends BaseModule {}
