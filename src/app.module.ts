@@ -15,6 +15,7 @@ import { AppController } from './app.controller';
 import { FileModule } from '@/modules/file/file.module';
 import { DownloadModule } from '@/modules/download/download.module';
 import { GraphqlModule } from '@/modules/graphql/graphql.module';
+import { ProxyModule } from '@/modules/proxy/proxy.module';
 
 function joinPath(...segments: string[]) {
   return path.join(__dirname, ...segments);
@@ -43,7 +44,7 @@ const middlewares: Middleware[] = [
 ];
 
 @Module({
-  imports: [FileModule, GraphqlModule, DownloadModule],
+  imports: [/*FileModule, GraphqlModule, DownloadModule, */ ProxyModule],
   controllers: [new AppController()],
 })
 export class AppModule extends BaseModule {

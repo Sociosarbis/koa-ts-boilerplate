@@ -11,11 +11,13 @@
   },
   "dependencies": {
     "@msgpack/msgpack": "^2.3.0",
+    "@types/http-proxy": "^1.17.8",
     "apollo-server-koa": "^2.19.2",
     "bull": "^3.18.1",
     "globby": "^11.0.1",
     "graphsql": "^0.0.0",
     "handlebars": "^4.7.6",
+    "http-proxy": "^1.18.1",
     "ini": "^2.0.0",
     "jsonwebtoken": "^8.5.1",
     "koa": "^2.13.0",
