@@ -13,6 +13,7 @@ import * as staticServerMiddlew from 'koa-static-server';
 import * as attachErrorHandler from 'koa-onerror';
 import { AppController } from './app.controller';
 import { FileModule } from '@/modules/file/file.module';
+import { DownloadModule } from '@/modules/download/download.module';
 import { GraphqlModule } from '@/modules/graphql/graphql.module';
 
 function joinPath(...segments: string[]) {
@@ -42,7 +43,7 @@ const middlewares: Middleware[] = [
 ];
 
 @Module({
-  imports: [FileModule, GraphqlModule],
+  imports: [FileModule, GraphqlModule, DownloadModule],
   controllers: [new AppController()],
 })
 export class AppModule extends BaseModule {

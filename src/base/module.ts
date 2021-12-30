@@ -6,12 +6,14 @@ import {
   PROCESS_METADATA,
   QUEUE_METADATA,
   CLASS_FACTORY_METADATA,
+  INJECT_METADATA,
 } from '@/base/consts';
 import { ModuleConfig } from '@/common/decorators/module';
 import * as Queue from 'bull';
 
 export class BaseModule extends Koa {
   protected queueMap: Record<string, Queue.Queue> = {};
+  protected providerMap = new Map<any, any>();
   protected moduleConfig: ModuleConfig;
 
   constructor() {
@@ -29,8 +31,10 @@ export class BaseModule extends Koa {
           : new p();
         if (inst instanceof Queue) {
           this.queueMap[inst.name] = inst;
-        } else {
+        } else if (Reflect.getMetadata(PROCESSOR_METADATA, p)) {
           this.handleProcessor(p);
+        } else {
+          this.providerMap.set(p, inst);
         }
       });
     }
@@ -58,6 +62,10 @@ export class BaseModule extends Koa {
           const queueName = Reflect.getMetadata(QUEUE_METADATA, c, p);
           if (queueName && queueName in this.queueMap) {
             c[p] = this.queueMap[queueName];
+          }
+          const signature = Reflect.getMetadata(INJECT_METADATA, c, p);
+          if (signature && this.providerMap.has(signature)) {
+            c[p] = this.providerMap.get(signature);
           }
         });
       });

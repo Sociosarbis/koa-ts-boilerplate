@@ -6,6 +6,7 @@ const QUEUE_METADATA = 'queue';
 const PROCESSOR_METADATA = 'processor';
 const PROCESS_METADATA = 'process';
 const MODULE_METADATA = 'module';
+const INJECT_METADATA = 'inject';
 const CLASS_FACTORY_METADATA = 'class-factory';
 
 const REQUEST_METHODS = {
@@ -29,6 +30,7 @@ export {
   MODULE_METADATA,
   PROCESSOR_METADATA,
   PROCESS_METADATA,
+  INJECT_METADATA,
   CLASS_FACTORY_METADATA,
   RequestMethodEnum,
 };
