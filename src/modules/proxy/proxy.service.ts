@@ -16,10 +16,12 @@ export class ProxyService {
     return new Promise((resolve, reject) => {
       const unlisten = () => {
         res.off('finish', onResolve);
+        res.off('close', onReject);
         res.off('error', onReject);
       };
       const listen = () => {
         res.on('finish', onResolve);
+        res.on('close', onReject);
         res.on('error', onReject);
       };
       const onReject = (e) => {
