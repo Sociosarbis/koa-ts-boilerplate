@@ -16,6 +16,7 @@ import { FileModule } from '@/modules/file/file.module';
 import { DownloadModule } from '@/modules/download/download.module';
 import { GraphqlModule } from '@/modules/graphql/graphql.module';
 import { ProxyModule } from '@/modules/proxy/proxy.module';
+import createCustomLogger from '@/utils/logger';
 
 function joinPath(...segments: string[]) {
   return path.join(__dirname, ...segments);
@@ -46,10 +47,11 @@ const middlewares: Middleware[] = [
 @Module({
   imports: [/*FileModule, GraphqlModule, DownloadModule, */ ProxyModule],
   controllers: [new AppController()],
+  providers: [createCustomLogger],
 })
 export class AppModule extends BaseModule {
   constructor() {
-    super();
+    super(null);
     middlewares.forEach((m) => this.use(m));
     attachErrorHandler(this);
   }

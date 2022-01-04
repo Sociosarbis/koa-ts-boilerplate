@@ -18,7 +18,7 @@ module.exports = merge(baseConfig, {
     new webpack.HotModuleReplacementPlugin(),
     new StartServerPlugin({
       name: 'server.js',
-      nodeArgs: ['--inspect-brk=9229'],
+      nodeArgs: [],
     }),
   ],
 });

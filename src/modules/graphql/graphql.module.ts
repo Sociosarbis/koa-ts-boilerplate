@@ -2,7 +2,6 @@ import { ApolloServer } from 'apollo-server-koa';
 import { BaseModule } from '@/base/module';
 import { Module } from '@/common/decorators/module';
 import { readFileSync } from 'fs';
-import { join } from 'path';
 
 const books = [
   {
@@ -18,8 +17,8 @@ const books = [
 @Module({})
 export class GraphqlModule extends BaseModule {
   private _server: ApolloServer;
-  constructor() {
-    super();
+  constructor(parent: BaseModule) {
+    super(parent);
     this._server = new ApolloServer({
       typeDefs: readFileSync('graphql/book.gql', {
         encoding: 'utf-8',

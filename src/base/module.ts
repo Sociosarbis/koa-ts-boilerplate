@@ -12,12 +12,14 @@ import { ModuleConfig } from '@/common/decorators/module';
 import * as Queue from 'bull';
 
 export class BaseModule extends Koa {
+  parent: BaseModule = null;
   protected queueMap: Record<string, Queue.Queue> = {};
   protected providerMap = new Map<any, any>();
   protected moduleConfig: ModuleConfig;
 
-  constructor() {
+  constructor(parent: BaseModule) {
     super();
+    this.parent = parent;
     this.moduleConfig = Reflect.getMetadata(MODULE_METADATA, this.constructor);
     this.handleProviders(this.moduleConfig);
     this.handleControllers(this.moduleConfig);
@@ -37,6 +39,14 @@ export class BaseModule extends Koa {
           this.providerMap.set(p, inst);
         }
       });
+    }
+  }
+
+  resolveProvider(target: any) {
+    let providerMap = this.providerMap;
+    while (providerMap) {
+      if (providerMap.has(target)) return providerMap.get(target);
+      providerMap = this.parent?.providerMap;
     }
   }
 
@@ -64,8 +74,8 @@ export class BaseModule extends Koa {
             c[p] = this.queueMap[queueName];
           }
           const signature = Reflect.getMetadata(INJECT_METADATA, c, p);
-          if (signature && this.providerMap.has(signature)) {
-            c[p] = this.providerMap.get(signature);
+          if (signature && this.resolveProvider(signature)) {
+            c[p] = this.resolveProvider(signature);
           }
         });
       });
@@ -77,7 +87,7 @@ export class BaseModule extends Koa {
     if (this.moduleConfig.imports) {
       middlewares.push(
         ...this.moduleConfig.imports.reduce((acc, m) => {
-          acc.push(new m().asMiddleware());
+          acc.push(new m(this).asMiddleware());
           return acc;
         }, []),
       );
