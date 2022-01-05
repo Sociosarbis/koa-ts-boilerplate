@@ -10,7 +10,7 @@ export class BaseController {
   protected readonly router = new Router();
   private _prefix: string;
 
-  constructor() {
+  constructor(..._args: unknown[]) {
     const prefix = Reflect.getMetadata(PATH_PREFIX_METADATA, this.constructor);
     this._prefix = this._cleanSegment(prefix);
     this.router.prefix(this._prefix);

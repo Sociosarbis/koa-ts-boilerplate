@@ -5,7 +5,7 @@ import { MODULE_METADATA } from '@/base/consts';
 export type ModuleConfig = {
   imports?: typeof BaseModule[];
   providers?: any[];
-  controllers?: BaseController[];
+  controllers?: typeof BaseController[];
 };
 
 export function Module(config: ModuleConfig) {

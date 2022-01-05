@@ -10,9 +10,17 @@ import {
 } from '@/base/consts';
 import { ModuleConfig } from '@/common/decorators/module';
 import * as Queue from 'bull';
+import { BaseController } from './controller';
+
+function callHook<T>(obj: T, hookName: 'onModuleInit' | 'onModuleDestroy') {
+  if (typeof obj[hookName] === 'function') obj[hookName]();
+  return obj;
+}
 
 export class BaseModule extends Koa {
   parent: BaseModule = null;
+  imports: BaseModule[] = [];
+  controllers: BaseController[] = [];
   protected queueMap: Record<string, Queue.Queue> = {};
   protected providerMap = new Map<any, any>();
   protected moduleConfig: ModuleConfig;
@@ -28,10 +36,9 @@ export class BaseModule extends Koa {
   protected handleProviders(moduleConfig: ModuleConfig) {
     if (moduleConfig.providers) {
       moduleConfig.providers.forEach((p) => {
-        const inst = Reflect.getMetadata(CLASS_FACTORY_METADATA, p)
-          ? p()
-          : new p();
-        if (inst instanceof Queue) {
+        const factoryMeta = Reflect.getMetadata(CLASS_FACTORY_METADATA, p);
+        const inst = callHook(factoryMeta ? p() : new p(), 'onModuleInit');
+        if (factoryMeta === 'queue') {
           this.queueMap[inst.name] = inst;
         } else if (Reflect.getMetadata(PROCESSOR_METADATA, p)) {
           this.handleProcessor(p);
@@ -43,11 +50,22 @@ export class BaseModule extends Koa {
   }
 
   resolveProvider(target: any) {
-    let providerMap = this.providerMap;
-    while (providerMap) {
-      if (providerMap.has(target)) return providerMap.get(target);
-      providerMap = this.parent?.providerMap;
+    let mod: BaseModule = this
+    while (mod?.providerMap) {
+      if (mod.providerMap.has(target)) return mod.providerMap.get(target);
+      mod = mod.parent
     }
+  }
+
+  resolveDep(p: any) {
+    let prop
+    if (p) {
+      if (p in this.queueMap) {
+        return this.queueMap[p];
+      }
+      prop = this.resolveProvider(p)
+    }
+    return prop
   }
 
   protected handleProcessor(p) {
@@ -66,16 +84,17 @@ export class BaseModule extends Koa {
 
   protected handleControllers(moduleConfig: ModuleConfig) {
     if (moduleConfig.controllers) {
-      moduleConfig.controllers.forEach((c) => {
+      moduleConfig.controllers.forEach((C) => {
+        const paramTypes = [...(Reflect.getMetadata('design:paramtypes', C) || [])]
+        paramTypes.forEach((t, i) => {
+          paramTypes[i] = this.resolveDep(t) || this.resolveDep(Reflect.getMetadata(`design:paramtypes:${i}`, C))
+        })
+        const c = new C(...paramTypes);
+        this.controllers.push(c);
         const propKeys = Object.getOwnPropertyNames(c);
         propKeys.forEach((p) => {
-          const queueName = Reflect.getMetadata(QUEUE_METADATA, c, p);
-          if (queueName && queueName in this.queueMap) {
-            c[p] = this.queueMap[queueName];
-          }
-          const signature = Reflect.getMetadata(INJECT_METADATA, c, p);
-          if (signature && this.resolveProvider(signature)) {
-            c[p] = this.resolveProvider(signature);
+          if (!c[p]) {
+            c[p] = this.resolveDep(Reflect.getMetadata(QUEUE_METADATA, c, p)) || this.resolveDep( Reflect.getMetadata(INJECT_METADATA, c, p))
           }
         });
       });
@@ -87,21 +106,29 @@ export class BaseModule extends Koa {
     if (this.moduleConfig.imports) {
       middlewares.push(
         ...this.moduleConfig.imports.reduce((acc, m) => {
-          acc.push(new m(this).asMiddleware());
+          const mod = callHook(new m(this), 'onModuleInit');
+          this.imports.push(mod);
+          acc.push(mod.asMiddleware());
           return acc;
         }, []),
       );
     }
-    if (this.moduleConfig.controllers) {
-      middlewares.push(
-        ...this.moduleConfig.controllers.map((c) => c.asMiddleware()),
-      );
-    }
+    middlewares.push(...this.controllers.map((c) => c.asMiddleware()));
     return compose(middlewares);
   }
 
   asApp() {
     this.use(this.asMiddleware());
     return this;
+  }
+
+  destroy() {
+    this.imports.forEach((m) => {
+      callHook(m, 'onModuleDestroy');
+    });
+    Object.values(this.queueMap).forEach((q) => callHook(q, 'onModuleDestroy'));
+    this.providerMap.forEach((p) => {
+      callHook(p, 'onModuleDestroy');
+    });
   }
 }

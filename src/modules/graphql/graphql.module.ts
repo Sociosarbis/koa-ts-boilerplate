@@ -2,6 +2,7 @@ import { ApolloServer } from 'apollo-server-koa';
 import { BaseModule } from '@/base/module';
 import { Module } from '@/common/decorators/module';
 import { readFileSync } from 'fs';
+import { OnModuleDestroy, OnModuleInit } from '@/common/hooks';
 
 const books = [
   {
@@ -15,10 +16,11 @@ const books = [
 ];
 
 @Module({})
-export class GraphqlModule extends BaseModule {
+export class GraphqlModule
+  extends BaseModule
+  implements OnModuleInit, OnModuleDestroy {
   private _server: ApolloServer;
-  constructor(parent: BaseModule) {
-    super(parent);
+  onModuleInit() {
     this._server = new ApolloServer({
       typeDefs: readFileSync('graphql/book.gql', {
         encoding: 'utf-8',
@@ -29,6 +31,10 @@ export class GraphqlModule extends BaseModule {
         },
       },
     });
+  }
+
+  onModuleDestroy() {
+    this._server.stop();
   }
 
   asMiddleware() {

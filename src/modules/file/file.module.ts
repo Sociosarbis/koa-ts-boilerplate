@@ -3,13 +3,26 @@ import { Module } from '@/common/decorators/module';
 import { BaseModule } from '@/base/module';
 import { FileController } from './file.controller';
 import { FileProcessor } from './file.processor';
-import makeClassFactory from '@/common/makeClassFactory';
+import { markClassFactory } from '@/common/makeClassFactory';
+import { OnModuleDestroy } from '@/common/hooks';
+
+class CustomQueue extends Queue implements OnModuleDestroy {
+  static forRoot(queueName: string, url: string) {
+    return markClassFactory(() => {
+      return new CustomQueue(queueName, url);
+    }, 'queue');
+  }
+
+  onModuleDestroy() {
+    this.close();
+  }
+}
 
 @Module({
   providers: [
-    makeClassFactory(Queue, 'file', 'redis://172.22.9.101:6379'),
+    CustomQueue.forRoot('file', 'redis://172.22.9.101:6379'),
     FileProcessor,
   ],
-  controllers: [new FileController()],
+  controllers: [FileController],
 })
 export class FileModule extends BaseModule {}
