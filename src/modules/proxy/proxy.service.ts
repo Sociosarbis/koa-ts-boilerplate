@@ -1,12 +1,12 @@
-import { createProxyServer } from 'http-proxy';
+import { createProxyServer } from 'http-proxy'
 
-type Server = ReturnType<typeof createProxyServer>;
+type Server = ReturnType<typeof createProxyServer>
 
 export class ProxyService {
   server = createProxyServer({
     ignorePath: true,
     changeOrigin: true,
-  });
+  })
 
   proxyWeb = (
     req: Parameters<Server['web']>[0],
@@ -15,25 +15,25 @@ export class ProxyService {
   ) => {
     return new Promise((resolve, reject) => {
       const unlisten = () => {
-        res.off('finish', onResolve);
-        res.off('close', onReject);
-        res.off('error', onReject);
-      };
+        res.off('finish', onResolve)
+        res.off('close', onReject)
+        res.off('error', onReject)
+      }
       const listen = () => {
-        res.on('finish', onResolve);
-        res.on('close', onReject);
-        res.on('error', onReject);
-      };
+        res.on('finish', onResolve)
+        res.on('close', onReject)
+        res.on('error', onReject)
+      }
       const onReject = (e) => {
-        unlisten();
-        reject(e);
-      };
+        unlisten()
+        reject(e)
+      }
       const onResolve = () => {
-        unlisten();
-        resolve(null);
-      };
-      listen();
-      this.server.web(req, res, options, (e) => onReject(e));
-    });
-  };
+        unlisten()
+        resolve(null)
+      }
+      listen()
+      this.server.web(req, res, options, (e) => onReject(e))
+    })
+  }
 }

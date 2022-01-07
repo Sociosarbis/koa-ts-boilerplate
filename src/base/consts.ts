@@ -1,13 +1,13 @@
-const PATH_PREFIX_METADATA = 'path-prefix';
-const METHOD_METADATA = 'method';
-const PATH_METADATA = 'path';
-const MIDDLEWARE_METADATA = 'middleware';
-const QUEUE_METADATA = 'queue';
-const PROCESSOR_METADATA = 'processor';
-const PROCESS_METADATA = 'process';
-const MODULE_METADATA = 'module';
-const INJECT_METADATA = 'inject';
-const CLASS_FACTORY_METADATA = 'class-factory';
+const PATH_PREFIX_METADATA = 'path-prefix'
+const METHOD_METADATA = 'method'
+const PATH_METADATA = 'path'
+const MIDDLEWARE_METADATA = 'middleware'
+const QUEUE_METADATA = 'queue'
+const PROCESSOR_METADATA = 'processor'
+const PROCESS_METADATA = 'process'
+const MODULE_METADATA = 'module'
+const INJECT_METADATA = 'inject'
+const CLASS_FACTORY_METADATA = 'class-factory'
 
 const REQUEST_METHODS = {
   GET: 'get',
@@ -16,9 +16,9 @@ const REQUEST_METHODS = {
   PATCH: 'patch',
   DEL: 'del',
   ALL: 'all',
-} as const;
+} as const
 
-type RequestMethodEnum = typeof REQUEST_METHODS[keyof typeof REQUEST_METHODS];
+type RequestMethodEnum = typeof REQUEST_METHODS[keyof typeof REQUEST_METHODS]
 
 export {
   PATH_PREFIX_METADATA,
@@ -33,4 +33,4 @@ export {
   INJECT_METADATA,
   CLASS_FACTORY_METADATA,
   RequestMethodEnum,
-};
+}

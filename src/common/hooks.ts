@@ -1,9 +1,9 @@
 interface OnModuleDestroy {
-  onModuleDestroy(): void;
+  onModuleDestroy(): void
 }
 
 interface OnModuleInit {
-  onModuleInit(): void;
+  onModuleInit(): void
 }
 
-export { OnModuleDestroy, OnModuleInit };
+export { OnModuleDestroy, OnModuleInit }

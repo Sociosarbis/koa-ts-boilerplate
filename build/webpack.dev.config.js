@@ -1,8 +1,8 @@
-const webpack = require('webpack');
-const { merge } = require('webpack-merge');
-const nodeExternals = require('webpack-node-externals');
-const StartServerPlugin = require('start-server-webpack-plugin');
-const baseConfig = require('./webpack.base.config');
+const webpack = require('webpack')
+const { merge } = require('webpack-merge')
+const nodeExternals = require('webpack-node-externals')
+const StartServerPlugin = require('start-server-webpack-plugin')
+const baseConfig = require('./webpack.base.config')
 
 module.exports = merge(baseConfig, {
   entry: ['webpack/hot/poll?100', './src/main.ts'],
@@ -21,4 +21,4 @@ module.exports = merge(baseConfig, {
       nodeArgs: [],
     }),
   ],
-});
+})

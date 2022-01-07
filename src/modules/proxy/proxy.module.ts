@@ -1,7 +1,7 @@
-import { Module } from '@/common/decorators/module';
-import { BaseModule } from '@/base/module';
-import { ProxyController } from './proxy.controller';
-import { ProxyService } from './proxy.service';
+import { Module } from '@/common/decorators/module'
+import { BaseModule } from '@/base/module'
+import { ProxyController } from './proxy.controller'
+import { ProxyService } from './proxy.service'
 
 @Module({
   providers: [ProxyService],

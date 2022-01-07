@@ -1,8 +1,6 @@
 module.exports = {
   parser: '@typescript-eslint/parser',
-  files: ['*.ts', '*.tsx']
   parserOptions: {
-    project: 'tsconfig.json',
     sourceType: 'module',
   },
   plugins: ['@typescript-eslint/eslint-plugin'],
@@ -23,6 +21,18 @@ module.exports = {
     '@typescript-eslint/no-explicit-any': 'off',
     '@typescript-eslint/no-var-requires': 'off',
     '@typescript-eslint/ban-ts-comment': 'off',
-    '@typescript-eslint/no-unused-vars': ["warn", { "argsIgnorePattern": "^_" }]
+    '@typescript-eslint/no-this-alias': 'off',
+    '@typescript-eslint/no-unused-vars': [
+      'warn',
+      { argsIgnorePattern: '^_', varsIgnorePattern: '^_' },
+    ],
   },
-};
+  overrides: [
+    {
+      files: ['*.ts'],
+      parserOptions: {
+        project: ['./tsconfig.json'],
+      },
+    },
+  ],
+}

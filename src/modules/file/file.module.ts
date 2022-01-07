@@ -1,20 +1,20 @@
-import * as Queue from 'bull';
-import { Module } from '@/common/decorators/module';
-import { BaseModule } from '@/base/module';
-import { FileController } from './file.controller';
-import { FileProcessor } from './file.processor';
-import { markClassFactory } from '@/common/makeClassFactory';
-import { OnModuleDestroy } from '@/common/hooks';
+import * as Queue from 'bull'
+import { Module } from '@/common/decorators/module'
+import { BaseModule } from '@/base/module'
+import { FileController } from './file.controller'
+import { FileProcessor } from './file.processor'
+import { markClassFactory } from '@/common/makeClassFactory'
+import { OnModuleDestroy } from '@/common/hooks'
 
 class CustomQueue extends Queue implements OnModuleDestroy {
   static forRoot(queueName: string, url: string) {
     return markClassFactory(() => {
-      return new CustomQueue(queueName, url);
-    }, 'queue');
+      return new CustomQueue(queueName, url)
+    }, 'queue')
   }
 
   onModuleDestroy() {
-    this.close();
+    this.close()
   }
 }
 

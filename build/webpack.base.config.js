@@ -1,6 +1,6 @@
-const path = require('path');
-const webpack = require('webpack');
-require('./resolveEnv');
+const path = require('path')
+const webpack = require('webpack')
+const CopyWebpackPlugin = require('copy-webpack-plugin')
 
 module.exports = {
   node: false,
@@ -22,10 +22,22 @@ module.exports = {
   },
   plugins: [
     new webpack.DefinePlugin({
-      PORT: JSON.stringify(Number(process.env.PORT)),
       NODE_ENV: JSON.stringify(process.env.NODE_ENV),
     }),
     new webpack.ProgressPlugin(),
+    new CopyWebpackPlugin({
+      patterns: [
+        { from: 'assets', to: 'assets' },
+        {
+          from:
+            process.env.NODE_ENV === 'production'
+              ? 'production.env'
+              : 'development.env',
+          to: 'env',
+          toType: 'file',
+        },
+      ],
+    }),
   ],
   output: {
     path: path.join(__dirname, '../dist'),
@@ -33,4 +45,4 @@ module.exports = {
     devtoolModuleFilenameTemplate: '[absolute-resource-path]',
     devtoolFallbackModuleFilenameTemplate: '[absolute-resource-path]?[hash]',
   },
-};
+}

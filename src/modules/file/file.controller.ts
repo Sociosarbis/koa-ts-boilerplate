@@ -1,13 +1,13 @@
-import { Get, Post } from '@/common/decorators/request';
-import { AppContext } from '@/base/types';
-import { Controller } from '@/common/decorators/controller';
-import { BaseController } from '@/base/controller';
-import { InjectQueue } from '@/common/decorators/injectQueue';
-import { Queue } from 'bull';
+import { Get, Post } from '@/common/decorators/request'
+import { AppContext } from '@/base/types'
+import { Controller } from '@/common/decorators/controller'
+import { BaseController } from '@/base/controller'
+import { InjectQueue } from '@/common/decorators/injectQueue'
+import { Queue } from 'bull'
 
 @Controller('file')
 export class FileController extends BaseController {
-  @InjectQueue('file') fileQueue: Queue = null;
+  @InjectQueue('file') fileQueue: Queue = null
   @Post('upload')
   async upload(ctx: AppContext) {
     this.fileQueue.add('save', {
@@ -19,16 +19,16 @@ export class FileController extends BaseController {
           ? ctx.request.files.files
           : []),
       ].filter(Boolean),
-    });
+    })
     ctx.body = {
       status: 0,
-    };
+    }
   }
 
   @Get('jobs')
   async getJobs(ctx) {
     ctx.body = {
       jobs: await this.fileQueue.getJobs(['waiting']),
-    };
+    }
   }
 }
