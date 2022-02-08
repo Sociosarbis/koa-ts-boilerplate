@@ -2,12 +2,18 @@
 <h1>{{ title }}</h1>
 <p>{{ greeting }} {{ title }}</p>
 <p>views: {{ views }}</p>
-<form method="POST" action="/file/upload" enctype="multipart/form-data">
-  <input name="filename" />
-  <input class="single-file" name="file" type="file" onchange="sliceUpload(this.files[0]);" />
-  <input name="files" type="file" multiple />
-  <input type="submit" />
-</form>
+<div style="margin-bottom:20px">
+  <h3>demo1</h3>
+  <form method="POST" action="/file/upload" enctype="multipart/form-data">
+    <label for="filename">文件夹名：<input name="filename" /></label>
+    <input name="files" type="file" multiple />
+    <input type="submit" />
+  </form>
+</div>
+<div>
+  <h3>demo2</h3>
+  断点续传：<input class="single-file" name="file" type="file" onchange="sliceUpload(this.files[0]);" />
+</div>
 <script src="/static/js/sliceUpload.js" type="module"></script>
 {{/inline}}
 {{> (partial "index.base.hbs") }}

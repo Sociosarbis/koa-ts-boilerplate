@@ -22,6 +22,14 @@ export class AppService {
       writable.on('finish', res)
     })
   }
+
+  getNameAndIndex(filename: string) {
+    const [name, index] = filename.split('_')
+    return {
+      name,
+      index: Number(index),
+    }
+  }
 }
 
 export default new AppService()

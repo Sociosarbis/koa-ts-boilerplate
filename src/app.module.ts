@@ -4,7 +4,7 @@ import { Middleware } from 'koa'
 import { joinSafe as join, basename } from 'upath'
 import * as contentComposition from 'content-disposition'
 import * as sessionMiddlew from 'koa-session-minimal'
-import * as corsMiddlew from 'koa-cors'
+import * as corsMiddlew from '@koa/cors'
 import viewsMiddlew from '@/common/middlewares/handlebars'
 import * as bodyMiddlew from 'koa-body'
 import * as jsonMiddlew from 'koa-json'
@@ -14,6 +14,7 @@ import * as attachErrorHandler from 'koa-onerror'
 import * as morgan from 'morgan'
 import expressCompat from '@/utils/expressCompat'
 import { AppController } from './app.controller'
+import { AppService } from './app.service'
 import { FileModule } from '@/modules/file/file.module'
 import { GraphqlModule } from '@/modules/graphql/graphql.module'
 import { ProxyModule } from '@/modules/proxy/proxy.module'
@@ -63,7 +64,7 @@ const middlewares: Middleware[] = [
 @Module({
   imports: [FileModule, GraphqlModule, ProxyModule],
   controllers: [AppController],
-  providers: [createCustomLogger],
+  providers: [createCustomLogger, AppService],
 })
 export class AppModule extends BaseModule {
   constructor() {

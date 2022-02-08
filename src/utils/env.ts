@@ -12,6 +12,8 @@ const isProd = process.env.NODE_ENV === 'production'
 
 const downloadsRoot = resolveRelative(process.env.DOWNLOADS_ROOT)
 
+const uploadResourceRoot = resolveRelative(process.env.UPLOAD_RESOURCE_ROOT)
+
 const serverRoot = resolveRelative('.')
 
-export { port, isProd, downloadsRoot, serverRoot }
+export { port, isProd, downloadsRoot, serverRoot, uploadResourceRoot }
