@@ -5,8 +5,7 @@ import jwtMiddlew, { sign } from '@/common/middlewares/jwt'
 import { Controller } from '@/common/decorators/controller'
 import { BaseController } from '@/base/controller'
 import { AppContext } from '@/base/types'
-import { createReadStream, createWriteStream } from 'fs'
-import { mkdir, stat, readdir } from '@/utils/io'
+import { mkdir } from '@/utils/io'
 import { File } from 'formidable'
 import { joinSafe } from 'upath'
 import { uploadResourceRoot } from '@/utils/env'
@@ -62,29 +61,20 @@ export class AppController extends BaseController {
   @Get('uploads/:hash/progress')
   async getUploadProgress(ctx: AppContext) {
     const { hash }: { hash: string } = ctx.params
-    const stats = await stat(joinSafe(uploadResourceRoot, hash))
-    const body = {
+    ctx.body = {
       status: 0,
       data: {
-        progress: {} as { [i: number]: number },
+        progress: await this.appService
+          .listFileStats(joinSafe(uploadResourceRoot, hash))
+          .then((list) =>
+            list.reduce((acc, item) => {
+              const { index } = this.appService.getNameAndIndex(item.name)
+              acc[index] = item.stat.size
+              return acc
+            }, {} as { [i: number]: number }),
+          ),
       },
     }
-    if (stats && stats.isDirectory()) {
-      const segments = await readdir(joinSafe(uploadResourceRoot, hash))
-      ;(
-        await Promise.all(
-          segments.map((f) => stat(joinSafe(uploadResourceRoot, hash, f))),
-        )
-      )
-        .map((stat, i) => ({ name: segments[i], stat }))
-        .filter(({ stat }) => stat.isFile())
-        .reduce((acc, item) => {
-          const { index } = this.appService.getNameAndIndex(item.name)
-          acc[index] = item.stat.size
-          return acc
-        }, body.data.progress)
-    }
-    ctx.body = body
   }
 
   @Put('uploadSlice')
@@ -100,44 +90,36 @@ export class AppController extends BaseController {
   @Post('mergeFile')
   async mergeFile(ctx: AppContext) {
     const { hash, name } = ctx.request.body
-    const stats = await stat(joinSafe(uploadResourceRoot, hash))
-    if (stats && stats.isDirectory()) {
-      try {
-        await Promise.all(
-          (await readdir(joinSafe(uploadResourceRoot, hash))).map(async (f) => {
-            const stats = await stat(joinSafe(uploadResourceRoot, hash, f))
-            if (stats && stats.isFile()) {
-              const [_, i] = f.split('_')
-              if (!isNaN(Number(i))) {
-                await mkdir(joinSafe(uploadResourceRoot, 'output'), {
-                  recursive: true,
-                })
-                await new Promise((res, rej) => {
-                  createReadStream(joinSafe(uploadResourceRoot, hash, f)).pipe(
-                    createWriteStream(
-                      joinSafe(uploadResourceRoot, 'output', name),
-                      {
-                        start: 1e6 * Number(i),
-                      },
-                    )
-                      .on('finish', res)
-                      .on('error', rej) as any,
-                  )
-                })
-              }
+    try {
+      const stats = await this.appService.listFileStats(
+        joinSafe(uploadResourceRoot, hash),
+      )
+      await Promise.all(
+        stats.map((item) => {
+          if (item.stat.isFile()) {
+            const { index } = this.appService.getNameAndIndex(item.name)
+            if (!isNaN(index)) {
+              return mkdir(joinSafe(uploadResourceRoot, 'output'), {
+                recursive: true,
+              }).then(() =>
+                this.appService.writeFileSegment(
+                  joinSafe(uploadResourceRoot, hash, item.name),
+                  joinSafe(uploadResourceRoot, 'output', name),
+                  1e6 * index,
+                ),
+              )
             }
-          }),
-        )
-        ctx.body = {
-          status: 0,
-        }
-        return
-      } catch (e) {
-        //
+          }
+        }),
+      )
+      ctx.body = {
+        status: 0,
       }
-    }
-    ctx.body = {
-      status: 1,
+    } catch (e) {
+      ctx.body = {
+        status: 1,
+        msg: e.message,
+      }
     }
   }
 }
