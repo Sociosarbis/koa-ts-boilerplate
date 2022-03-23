@@ -9,10 +9,12 @@
     "test": "jest"
   },
   "dependencies": {
+    "@koa/cors": "^3.1.0",
     "@msgpack/msgpack": "^2.3.0",
     "@types/http-proxy": "^1.17.8",
     "@types/morgan": "^1.9.3",
     "apollo-server-koa": "^2.19.2",
+    "bcryptjs": "^2.4.3",
     "bull": "^3.18.1",
     "globby": "^11.0.1",
     "graphsql": "^0.0.0",
@@ -23,7 +25,6 @@
     "koa": "^2.13.0",
     "koa-body": "^4.2.0",
     "koa-compose": "^4.1.0",
-    "@koa/cors": "^3.1.0",
     "koa-favicon": "^2.1.0",
     "koa-json": "^2.0.2",
     "koa-jwt": "^4.0.0",
@@ -34,9 +35,11 @@
     "morgan": "^1.10.0",
     "reflect-metadata": "^0.1.13",
     "tsconfig-paths": "^3.9.0",
+    "typeorm": "^0.3.2",
     "winston": "^3.3.3"
   },
   "devDependencies": {
+    "@types/bcryptjs": "^2.4.2",
     "@types/bull": "^3.14.4",
     "@types/ini": "^1.3.30",
     "@types/koa-favicon": "^2.0.19",
@@ -49,6 +52,7 @@
     "@typescript-eslint/eslint-plugin": "^4.6.1",
     "@typescript-eslint/parser": "^4.6.1",
     "clean-webpack-plugin": "^3.0.0",
+    "copy-webpack-plugin": "^6.4.1",
     "cross-env": "^7.0.2",
     "dotenv": "^8.2.0",
     "eslint": "^7.13.0",
@@ -58,7 +62,6 @@
     "prettier": "^2.1.2",
     "rimraf": "^3.0.2",
     "start-server-webpack-plugin": "^2.2.5",
-    "copy-webpack-plugin": "^6.4.1",
     "supertest": "^6.0.1",
     "ts-jest": "^26.4.4",
     "ts-loader": "^8.0.11",

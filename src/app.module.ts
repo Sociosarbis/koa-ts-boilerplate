@@ -20,6 +20,7 @@ import { GraphqlModule } from '@/modules/graphql/graphql.module'
 import { ProxyModule } from '@/modules/proxy/proxy.module'
 import createCustomLogger, { rootLogger } from '@/utils/logger'
 import { isProd, serverRoot, downloadsRoot } from '@/utils/env'
+import AppDataSource from './database'
 
 const middlewares: Middleware[] = [
   expressCompat(
@@ -64,7 +65,7 @@ const middlewares: Middleware[] = [
 @Module({
   imports: [FileModule, GraphqlModule, ProxyModule],
   controllers: [AppController],
-  providers: [createCustomLogger, AppService],
+  providers: [createCustomLogger, AppService, AppDataSource],
 })
 export class AppModule extends BaseModule {
   constructor() {
