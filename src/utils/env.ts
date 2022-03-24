@@ -36,6 +36,8 @@ const serverRoot = resolveRelative('.')
 
 const mysqlConfig = resolveMySQLConfigFromEnv()
 
+const authSecretKey = process.env.AUTH_SECRET_KEY || 'auth-secret-key'
+
 export {
   port,
   isProd,
@@ -43,4 +45,5 @@ export {
   serverRoot,
   uploadResourceRoot,
   mysqlConfig,
+  authSecretKey,
 }

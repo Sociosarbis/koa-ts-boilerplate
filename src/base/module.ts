@@ -37,7 +37,11 @@ export class BaseModule extends Koa {
     if (moduleConfig.providers) {
       moduleConfig.providers.forEach((p) => {
         const factoryMeta = Reflect.getMetadata(CLASS_FACTORY_METADATA, p)
-        const inst = callHook(factoryMeta ? p() : new p(), 'onModuleInit')
+        const params = this.resolveParams(p)
+        const inst = callHook(
+          factoryMeta ? p(...params) : new p(...params),
+          'onModuleInit',
+        )
         if (factoryMeta === 'queue') {
           this.queueMap[inst.name] = inst
         } else if (Reflect.getMetadata(PROCESSOR_METADATA, p)) {
@@ -82,18 +86,18 @@ export class BaseModule extends Koa {
     }
   }
 
+  private resolveParams<T extends Constructor | AnyFunc>(C: T) {
+    return (Reflect.getMetadata('design:paramtypes', C) || []).map((t, i) =>
+      this.resolveDep(
+        Reflect.getMetadata(`design:paramtypes:${i}`, C) || this.resolveDep(t),
+      ),
+    )
+  }
+
   protected handleControllers(moduleConfig: ModuleConfig) {
     if (moduleConfig.controllers) {
       moduleConfig.controllers.forEach((C) => {
-        const paramTypes = [
-          ...(Reflect.getMetadata('design:paramtypes', C) || []),
-        ]
-        paramTypes.forEach((t, i) => {
-          paramTypes[i] =
-            this.resolveDep(t) ||
-            this.resolveDep(Reflect.getMetadata(`design:paramtypes:${i}`, C))
-        })
-        const c = new C(...paramTypes)
+        const c = new C(...this.resolveParams(C))
         this.controllers.push(c)
         const propKeys = Object.getOwnPropertyNames(c)
         propKeys.forEach((p) => {

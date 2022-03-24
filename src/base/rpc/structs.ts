@@ -1,5 +1,4 @@
 import { EventEmitter } from 'events'
-import { AnyFunc } from '@/base/types'
 class YarHeader {
   id = 0
   version = 0

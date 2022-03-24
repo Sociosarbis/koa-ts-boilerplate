@@ -1,4 +1,9 @@
-import { Entity, Column, PrimaryGeneratedColumn } from 'typeorm'
+import {
+  Entity,
+  Column,
+  PrimaryGeneratedColumn,
+  CreateDateColumn,
+} from 'typeorm'
 
 @Entity()
 export class Token {
@@ -10,4 +15,10 @@ export class Token {
 
   @Column()
   userID: number
+
+  @CreateDateColumn()
+  createdAt: Date
+
+  @Column()
+  expiresAt: Date
 }

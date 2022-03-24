@@ -30,6 +30,8 @@ const AppDataSource = markClassFactory(
     }),
 )
 
+export * from 'typeorm'
+
 export { CustomDataSource }
 
 export default AppDataSource

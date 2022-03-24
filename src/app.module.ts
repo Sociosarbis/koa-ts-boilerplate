@@ -18,6 +18,7 @@ import { AppService } from './app.service'
 import { FileModule } from '@/modules/file/file.module'
 import { GraphqlModule } from '@/modules/graphql/graphql.module'
 import { ProxyModule } from '@/modules/proxy/proxy.module'
+import { AuthModule } from '@/modules/auth/auth.module'
 import createCustomLogger, { rootLogger } from '@/utils/logger'
 import { isProd, serverRoot, downloadsRoot } from '@/utils/env'
 import AppDataSource from './database'
@@ -63,7 +64,7 @@ const middlewares: Middleware[] = [
 ]
 
 @Module({
-  imports: [FileModule, GraphqlModule, ProxyModule],
+  imports: [FileModule, GraphqlModule, ProxyModule, AuthModule],
   controllers: [AppController],
   providers: [createCustomLogger, AppService, AppDataSource],
 })
