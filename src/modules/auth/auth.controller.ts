@@ -17,17 +17,21 @@ export class AuthController extends BaseController {
     super()
   }
 
-  checkRefreshToken(ctx: AppContext) {
+  checkUserID(ctx: AppContext) {
     const { id }: { id: number } = ctx.state.account
-    const { refreshToken }: { refreshToken: string } = ctx.request.body
     if (isNaN(id)) {
-      ctx.throw(statusCodes.UNAUTHORIZED, msgResponse('invalid accessToken'))
+      ctx.throw(statusCodes.UNAUTHORIZED, 'invalid accessToken')
     }
+    return id
+  }
+
+  checkRefreshToken(ctx: AppContext) {
+    const { refreshToken }: { refreshToken: string } = ctx.request.body
 
     if (!refreshToken) {
-      ctx.throw(statusCodes.BAD_REQUEST, msgResponse('no refreshToken'))
+      ctx.throw(statusCodes.BAD_REQUEST, 'no refreshToken')
     }
-    return { id, refreshToken }
+    return refreshToken
   }
 
   @Post('account')
@@ -44,10 +48,10 @@ export class AuthController extends BaseController {
     } catch (e) {
       if (e instanceof AuthError) {
         if (e.message === AuthErrorMsg.USER_ALREADY_EXISTS) {
-          ctx.throw(statusCodes.BAD_REQUEST, msgResponse(e))
+          ctx.throw(statusCodes.BAD_REQUEST, e.message)
         }
       }
-      ctx.throw()
+      ctx.throw(statusCodes.INTERNAL_SERVER_ERROR, e.message)
     }
   }
 
@@ -58,21 +62,18 @@ export class AuthController extends BaseController {
       password,
     }: { username: string; password: string } = ctx.request.body
     if (!username) {
-      ctx.throw(statusCodes.BAD_REQUEST, msgResponse('invalid username'))
+      ctx.throw(statusCodes.BAD_REQUEST, 'invalid username')
     }
     const user = await this.service.getUserByName(username)
     if (!user) {
-      ctx.throw(
-        statusCodes.BAD_REQUEST,
-        msgResponse(AuthErrorMsg.USER_NOT_FOUND),
-      )
+      ctx.throw(statusCodes.BAD_REQUEST, AuthErrorMsg.USER_NOT_FOUND)
     }
     if (!compareSync(password, user.hashedPassword)) {
-      ctx.throw(statusCodes.UNAUTHORIZED, msgResponse(AuthErrorMsg.GENERAL))
+      ctx.throw(statusCodes.UNAUTHORIZED, AuthErrorMsg.GENERAL)
     }
     ctx.body = {
       accessToken: this.service.createAccessToken(user),
-      refreshToken: this.service.createRrefreshToken(user.id),
+      refreshToken: (await this.service.createRrefreshToken(user.id)).value,
     }
   }
 
@@ -86,7 +87,11 @@ export class AuthController extends BaseController {
     }),
   ])
   async refreshAccessToken(ctx: AppContext) {
-    const { id, refreshToken } = this.checkRefreshToken(ctx)
+    const [id, refreshToken] = [
+      this.checkUserID(ctx),
+      this.checkRefreshToken(ctx),
+    ]
+    console.log(`id:refreshToken`, refreshToken)
     if (!(await this.service.getRefreshToken(id, refreshToken))) {
       ctx.throw(statusCodes.UNAUTHORIZED, 'refreshToken is not valid')
     }
@@ -100,8 +105,8 @@ export class AuthController extends BaseController {
   @Del('account/login-status')
   @Compose([jwtMiddleware({ secret: authSecretKey, key: 'account' })])
   async logout(ctx: AppContext) {
-    const { id, refreshToken } = this.checkRefreshToken(ctx)
-    await this.service.cancelRefreshToken(id, refreshToken)
+    const id = this.checkUserID(ctx)
+    await this.service.cancelRefreshToken(id)
     ctx.body = msgResponse('ok')
   }
 }

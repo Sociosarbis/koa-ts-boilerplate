@@ -9,7 +9,8 @@ import { OnModuleDestroy } from '@/common/hooks'
 class CustomQueue extends Queue implements OnModuleDestroy {
   static forRoot(queueName: string, url: string) {
     return markClassFactory(() => {
-      return new CustomQueue(queueName, url)
+      const queue = new CustomQueue(queueName, url)
+      return queue.isReady().then(() => queue)
     }, 'queue')
   }
 

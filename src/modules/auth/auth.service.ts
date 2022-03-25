@@ -1,10 +1,10 @@
 import AppDataSource, { CustomDataSource, Repository } from '@/database'
-import jwt from 'jsonwebtoken'
+import * as jwt from 'jsonwebtoken'
 import { authSecretKey } from '@/utils/env'
-import crypto from 'crypto'
+import * as crypto from 'crypto'
 import { User } from '@/dao/user.entity'
 import { hashSync } from 'bcryptjs'
-import dayjs from 'dayjs'
+import * as dayjs from 'dayjs'
 import { Injectable } from '@/common/decorators/injectable'
 import { Inject } from '@/common/decorators/inject'
 import { Token } from '@/dao/token.entity'
@@ -41,16 +41,20 @@ export class AuthService {
 
   async createRrefreshToken(userID: number) {
     await this.cancelRefreshToken(userID)
-    let token = new Token()
+    const token = new Token()
     token.userID = userID
     token.value = crypto.randomBytes(40).toString('hex')
     token.expiresAt = dayjs().add(1, 'day').toDate()
-    token = await this.#tokenRepo
-      .createQueryBuilder('token')
-      .insert()
-      .values(token)
-      .execute()[0]
-    return token
+    return Object.assign(
+      token,
+      (
+        await this.#tokenRepo
+          .createQueryBuilder('token')
+          .insert()
+          .values(token)
+          .execute()
+      ).generatedMaps[0],
+    )
   }
 
   createAccessToken(user: User) {
@@ -103,14 +107,13 @@ export class AuthService {
     if (existUser) {
       throw new AuthError(AuthErrorMsg.USER_ALREADY_EXISTS)
     }
-    let user = new User()
+    const user = new User()
     user.username = username
     user.hashedPassword = hashSync(password, 12)
-    user = await this.#repo
-      .createQueryBuilder()
-      .insert()
-      .values(user)
-      .execute()[0]
-    return user
+    return Object.assign(
+      user,
+      (await this.#repo.createQueryBuilder().insert().values(user).execute())
+        .generatedMaps[0],
+    )
   }
 }

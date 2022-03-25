@@ -9,8 +9,8 @@ declare global {
     }
   }
 }
-function bootstrap() {
-  const app = new AppModule().asApp()
+async function bootstrap() {
+  const app = await new AppModule().asApp()
   const server = app.listen(Number(process.env.PORT || 3000), 'localhost')
   if (module.hot) {
     module.hot.accept()

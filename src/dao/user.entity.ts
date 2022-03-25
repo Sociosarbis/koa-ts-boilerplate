@@ -16,6 +16,6 @@ export class User {
   @Column({ name: 'hashed_passworded' })
   hashedPassword: string
 
-  @CreateDateColumn({ name: 'created_at' })
+  @CreateDateColumn({ name: 'created_at', type: 'datetime' })
   createdAt: Date
 }

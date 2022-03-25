@@ -1,8 +1,9 @@
+import { OnModuleDestroy } from '@/common/hooks'
 import { createProxyServer } from 'http-proxy'
 
 type Server = ReturnType<typeof createProxyServer>
 
-export class ProxyService {
+export class ProxyService implements OnModuleDestroy {
   server = createProxyServer({
     ignorePath: true,
     changeOrigin: true,
@@ -35,5 +36,9 @@ export class ProxyService {
       listen()
       this.server.web(req, res, options, (e) => onReject(e))
     })
+  }
+
+  onModuleDestroy() {
+    this.server.close()
   }
 }

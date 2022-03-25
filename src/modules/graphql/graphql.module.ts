@@ -37,7 +37,7 @@ export class GraphqlModule
     this._server.stop()
   }
 
-  asMiddleware() {
+  async asMiddleware() {
     return this._server.getMiddleware()
   }
 }

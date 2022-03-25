@@ -10,7 +10,9 @@ type MySQLConfig = {
 }
 
 const resolveRelative = (p: string) => {
-  return isAbsolute(p) ? p : join(__dirname, p)
+  return isAbsolute(p)
+    ? p
+    : join(process.env.NODE_ENV === 'test' ? process.cwd() : __dirname, p)
 }
 
 function resolveMySQLConfigFromEnv(): MySQLConfig {

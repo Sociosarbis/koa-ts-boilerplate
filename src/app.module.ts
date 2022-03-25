@@ -36,7 +36,11 @@ const middlewares: Middleware[] = [
     }),
   ),
   corsMiddlew(),
-  sessionMiddlew(),
+  sessionMiddlew({
+    cookie: {
+      maxAge: process.env.NODE_ENV === 'test' ? 200 : 0,
+    },
+  }),
   faviconMiddlew(join(serverRoot, 'assets/static/favicon.ico')),
   staticServerMiddlew({
     rootDir: join(serverRoot, 'assets/static'),
@@ -63,8 +67,13 @@ const middlewares: Middleware[] = [
   viewsMiddlew({}),
 ]
 
+const imports = [GraphqlModule, ProxyModule, AuthModule]
+
+if (process.env.REDIS) {
+  imports.push(FileModule)
+}
 @Module({
-  imports: [FileModule, GraphqlModule, ProxyModule, AuthModule],
+  imports,
   controllers: [AppController],
   providers: [createCustomLogger, AppService, AppDataSource],
 })

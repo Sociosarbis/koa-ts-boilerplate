@@ -10,4 +10,4 @@ module.exports = {
   },
   collectCoverageFrom: ['**/*.(t|j)s'],
   testEnvironment: 'node',
-};
+}

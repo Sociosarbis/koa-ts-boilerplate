@@ -21,6 +21,7 @@ export class BaseModule extends Koa {
   parent: BaseModule = null
   imports: BaseModule[] = []
   controllers: BaseController[] = []
+  #isReady: Promise<void>
   protected queueMap: Record<string, Queue.Queue> = {}
   protected providerMap = new Map<any, any>()
   protected moduleConfig: ModuleConfig
@@ -29,27 +30,35 @@ export class BaseModule extends Koa {
     super()
     this.parent = parent
     this.moduleConfig = Reflect.getMetadata(MODULE_METADATA, this.constructor)
-    this.handleProviders(this.moduleConfig)
-    this.handleControllers(this.moduleConfig)
+    this.#isReady = this.handleProviders(this.moduleConfig).then(() =>
+      this.handleControllers(this.moduleConfig),
+    )
   }
 
-  protected handleProviders(moduleConfig: ModuleConfig) {
+  isReady() {
+    return this.#isReady
+  }
+
+  protected async handleProviders(moduleConfig: ModuleConfig) {
     if (moduleConfig.providers) {
-      moduleConfig.providers.forEach((p) => {
-        const factoryMeta = Reflect.getMetadata(CLASS_FACTORY_METADATA, p)
-        const params = this.resolveParams(p)
-        const inst = callHook(
-          factoryMeta ? p(...params) : new p(...params),
-          'onModuleInit',
-        )
-        if (factoryMeta === 'queue') {
-          this.queueMap[inst.name] = inst
-        } else if (Reflect.getMetadata(PROCESSOR_METADATA, p)) {
-          this.handleProcessor(p)
-        } else {
-          this.providerMap.set(p, inst)
-        }
-      })
+      await Promise.all(
+        moduleConfig.providers.map(async (p) => {
+          const factoryMeta = Reflect.getMetadata(CLASS_FACTORY_METADATA, p)
+          const params = this.resolveParams(p)
+          let inst = factoryMeta ? p(...params) : new p(...params)
+          if (inst instanceof Promise) {
+            inst = await inst
+          }
+          inst = callHook(inst, 'onModuleInit')
+          if (factoryMeta === 'queue') {
+            this.queueMap[inst.name] = inst
+          } else if (Reflect.getMetadata(PROCESSOR_METADATA, p)) {
+            this.handleProcessor(p)
+          } else {
+            this.providerMap.set(p, inst)
+          }
+        }),
+      )
     }
   }
 
@@ -87,10 +96,10 @@ export class BaseModule extends Koa {
   }
 
   private resolveParams<T extends Constructor | AnyFunc>(C: T) {
-    return (Reflect.getMetadata('design:paramtypes', C) || []).map((t, i) =>
-      this.resolveDep(
-        Reflect.getMetadata(`design:paramtypes:${i}`, C) || this.resolveDep(t),
-      ),
+    return (Reflect.getMetadata('design:paramtypes', C) || []).map(
+      (t, i) =>
+        this.resolveDep(Reflect.getMetadata(`design:paramtypes:${i}`, C)) ||
+        this.resolveDep(t),
     )
   }
 
@@ -111,24 +120,25 @@ export class BaseModule extends Koa {
     }
   }
 
-  asMiddleware() {
+  async asMiddleware() {
     const middlewares = []
     if (this.moduleConfig.imports) {
-      middlewares.push(
-        ...this.moduleConfig.imports.reduce((acc, m) => {
+      await this.#isReady
+      await Promise.all(
+        this.moduleConfig.imports.map(async (m) => {
           const mod = callHook(new m(this), 'onModuleInit')
           this.imports.push(mod)
-          acc.push(mod.asMiddleware())
-          return acc
-        }, []),
+          await mod.isReady()
+          middlewares.push(await mod.asMiddleware())
+        }),
       )
     }
     middlewares.push(...this.controllers.map((c) => c.asMiddleware()))
     return compose(middlewares)
   }
 
-  asApp() {
-    this.use(this.asMiddleware())
+  async asApp() {
+    this.use(await this.asMiddleware())
     return this
   }
 
