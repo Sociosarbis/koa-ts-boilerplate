@@ -1,4 +1,6 @@
 import AppDataSource, { CustomDataSource, Repository } from '@/database'
+import jwt from 'jsonwebtoken'
+import { authSecretKey } from '@/utils/env'
 import crypto from 'crypto'
 import { User } from '@/dao/user.entity'
 import { hashSync } from 'bcryptjs'
@@ -6,6 +8,8 @@ import dayjs from 'dayjs'
 import { Injectable } from '@/common/decorators/injectable'
 import { Inject } from '@/common/decorators/inject'
 import { Token } from '@/dao/token.entity'
+
+const ACCESS_TOKEN_EXPIRES_IN = '10m'
 
 export const enum AuthErrorMsg {
   USER_ALREADY_EXISTS = 'user already exists',
@@ -36,20 +40,8 @@ export class AuthService {
   }
 
   async createRrefreshToken(userID: number) {
-    const now = new Date()
-    let token = await this.#tokenRepo
-      .createQueryBuilder('token')
-      .where('token.userID = :userID', {
-        userID,
-      })
-      .andWhere('token.expiresAt > :expiresAt', {
-        expiresAt: now,
-      })
-      .getOne()
-    if (token) {
-      await this.cancelRefreshToken(token, now)
-    }
-    token = new Token()
+    await this.cancelRefreshToken(userID)
+    let token = new Token()
     token.userID = userID
     token.value = crypto.randomBytes(40).toString('hex')
     token.expiresAt = dayjs().add(1, 'day').toDate()
@@ -61,18 +53,43 @@ export class AuthService {
     return token
   }
 
-  cancelRefreshToken(token: Token, expiresAt?: Date) {
-    expiresAt = expiresAt ?? new Date()
+  createAccessToken(user: User) {
+    return jwt.sign({ id: user.id }, authSecretKey, {
+      expiresIn: ACCESS_TOKEN_EXPIRES_IN,
+    })
+  }
+
+  getRefreshToken(userID: number, value: string) {
     return this.#tokenRepo
       .createQueryBuilder('token')
+      .where('token.user_id = :userID', {
+        userID,
+      })
+      .andWhere('token.value = :value', { value })
+      .andWhere('token.expires_at > :expiresAt', {
+        expiresAt: new Date(),
+      })
+      .getOne()
+  }
+
+  cancelRefreshToken(userID: number, value?: string) {
+    const expiresAt = new Date()
+    const queryBuilder = this.#tokenRepo
+      .createQueryBuilder('token')
       .update()
+      .where('token.user_id = :userID', {
+        userID,
+      })
+      .andWhere('token.expires_at > :expiresAt', {
+        expiresAt,
+      })
       .set({
         expiresAt,
       })
-      .where('id = :id', {
-        id: token.id,
-      })
-      .execute()
+    if (value) {
+      queryBuilder.andWhere('token.value = :value', { value })
+    }
+    return queryBuilder.execute()
   }
 
   async createUser({

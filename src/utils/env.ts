@@ -15,7 +15,7 @@ const resolveRelative = (p: string) => {
 
 function resolveMySQLConfigFromEnv(): MySQLConfig {
   return {
-    username: process.env.MYSQL_HOST ?? 'user',
+    username: process.env.MYSQL_USER ?? 'user',
     password: process.env.MYSQL_PASS ?? 'password',
     host: process.env.MYSQL_HOST ?? 'localhost',
     port: Number(process.env.MYSQL_PORT ?? '3306'),

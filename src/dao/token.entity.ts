@@ -3,9 +3,11 @@ import {
   Column,
   PrimaryGeneratedColumn,
   CreateDateColumn,
+  Index,
 } from 'typeorm'
 
-@Entity()
+@Entity({ name: 'token' })
+@Index(['value', 'userID'], { unique: true })
 export class Token {
   @PrimaryGeneratedColumn()
   id: number
@@ -13,12 +15,12 @@ export class Token {
   @Column()
   value: string
 
-  @Column()
+  @Column({ name: 'user_id' })
   userID: number
 
-  @CreateDateColumn()
+  @CreateDateColumn({ name: 'created_at' })
   createdAt: Date
 
-  @Column()
+  @Column({ name: 'expires_at' })
   expiresAt: Date
 }
