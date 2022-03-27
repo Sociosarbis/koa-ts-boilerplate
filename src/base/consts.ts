@@ -7,6 +7,7 @@ const PROCESSOR_METADATA = 'processor'
 const PROCESS_METADATA = 'process'
 const MODULE_METADATA = 'module'
 const INJECT_METADATA = 'inject'
+const INJECTABLE_METADATA = 'injectable'
 const CLASS_FACTORY_METADATA = 'class-factory'
 
 const REQUEST_METHODS = {
@@ -31,6 +32,7 @@ export {
   PROCESSOR_METADATA,
   PROCESS_METADATA,
   INJECT_METADATA,
+  INJECTABLE_METADATA,
   CLASS_FACTORY_METADATA,
   RequestMethodEnum,
 }

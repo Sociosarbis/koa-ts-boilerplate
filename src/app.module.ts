@@ -1,4 +1,4 @@
-import { BaseModule } from '@/base/module'
+import { BaseModule, ModuleOptions } from '@/base/module'
 import { Module } from '@/common/decorators/module'
 import { Middleware } from 'koa'
 import { joinSafe as join, basename } from 'upath'
@@ -20,7 +20,7 @@ import { GraphqlModule } from '@/modules/graphql/graphql.module'
 import { ProxyModule } from '@/modules/proxy/proxy.module'
 import { AuthModule } from '@/modules/auth/auth.module'
 import createCustomLogger, { rootLogger } from '@/utils/logger'
-import { isProd, serverRoot, downloadsRoot } from '@/utils/env'
+import { isProd, serverRoot, downloadsRoot, isTest } from '@/utils/env'
 import AppDataSource from './database'
 
 const middlewares: Middleware[] = [
@@ -38,7 +38,7 @@ const middlewares: Middleware[] = [
   corsMiddlew(),
   sessionMiddlew({
     cookie: {
-      maxAge: process.env.NODE_ENV === 'test' ? 200 : 0,
+      maxAge: isTest ? 200 : 0,
     },
   }),
   faviconMiddlew(join(serverRoot, 'assets/static/favicon.ico')),
@@ -78,8 +78,8 @@ if (process.env.REDIS) {
   providers: [createCustomLogger, AppService, AppDataSource],
 })
 export class AppModule extends BaseModule {
-  constructor() {
-    super(null)
+  constructor(options?: ModuleOptions) {
+    super(null, options)
     middlewares.forEach((m) => this.use(m))
     attachErrorHandler(this)
   }

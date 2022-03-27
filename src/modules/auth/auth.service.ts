@@ -19,7 +19,7 @@ export const enum AuthErrorMsg {
 
 export class AuthError extends Error {}
 
-@Injectable()
+@Injectable('AuthService')
 export class AuthService {
   #repo: Repository<User>
 
@@ -114,6 +114,103 @@ export class AuthService {
       user,
       (await this.#repo.createQueryBuilder().insert().values(user).execute())
         .generatedMaps[0],
+    )
+  }
+}
+
+@Injectable('AuthService')
+export class AuthTestService extends AuthService {
+  #db: CustomDataSource
+
+  constructor(@Inject(AppDataSource) db: CustomDataSource) {
+    super(db)
+    this.#db = db
+  }
+
+  getUserByName(name: string) {
+    return this.#db.queryRunner.manager
+      .createQueryBuilder(User, 'user')
+      .where('user.username = :username', {
+        username: name,
+      })
+      .getOne()
+  }
+
+  getRefreshToken(userID: number, value: string) {
+    return this.#db.queryRunner.manager
+      .createQueryBuilder(Token, 'token')
+      .where('token.user_id = :userID', {
+        userID,
+      })
+      .andWhere('token.value = :value', { value })
+      .andWhere('token.expires_at > :expiresAt', {
+        expiresAt: new Date(),
+      })
+      .getOne()
+  }
+
+  async createRrefreshToken(userID: number) {
+    await this.cancelRefreshToken(userID)
+    const token = new Token()
+    token.userID = userID
+    token.value = crypto.randomBytes(40).toString('hex')
+    token.expiresAt = dayjs().add(1, 'day').toDate()
+    this.#db.queryRunner.manager.createQueryBuilder()
+    return Object.assign(
+      token,
+      (
+        await this.#db.queryRunner.manager
+          .createQueryBuilder(Token, 'token')
+          .insert()
+          .values(token)
+          .execute()
+      ).generatedMaps[0],
+    )
+  }
+
+  cancelRefreshToken(userID: number, value?: string) {
+    const expiresAt = new Date()
+    const queryBuilder = this.#db.queryRunner.manager
+      .createQueryBuilder(Token, 'token')
+      .update()
+      .where('token.user_id = :userID', {
+        userID,
+      })
+      .andWhere('token.expires_at > :expiresAt', {
+        expiresAt,
+      })
+      .set({
+        expiresAt,
+      })
+    if (value) {
+      queryBuilder.andWhere('token.value = :value', { value })
+    }
+    return queryBuilder.execute()
+  }
+
+  async createUser({
+    username,
+    password,
+  }: {
+    username: string
+    password: string
+  }) {
+    const existUser = await this.getUserByName(username)
+    if (existUser) {
+      throw new AuthError(AuthErrorMsg.USER_ALREADY_EXISTS)
+    }
+    const user = new User()
+    user.username = username
+    user.hashedPassword = hashSync(password, 12)
+    return Object.assign(
+      user,
+      (
+        await this.#db.queryRunner.manager
+          .createQueryBuilder(User, 'user')
+          .insert()
+          .values(user)
+          .execute()
+      ).generatedMaps[0],
     )
   }
 }

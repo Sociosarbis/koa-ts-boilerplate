@@ -10,10 +10,11 @@ import { AppContext } from '@/base/types'
 import { AuthService, AuthError, AuthErrorMsg } from './auth.service'
 import { compareSync } from 'bcryptjs'
 import { User } from '@/dao/user.entity'
+import { Inject } from '@/common/decorators/inject'
 
 @Controller('auth')
 export class AuthController extends BaseController {
-  constructor(private service: AuthService) {
+  constructor(@Inject('AuthService') private service: AuthService) {
     super()
   }
 
@@ -91,7 +92,6 @@ export class AuthController extends BaseController {
       this.checkUserID(ctx),
       this.checkRefreshToken(ctx),
     ]
-    console.log(`id:refreshToken`, refreshToken)
     if (!(await this.service.getRefreshToken(id, refreshToken))) {
       ctx.throw(statusCodes.UNAUTHORIZED, 'refreshToken is not valid')
     }

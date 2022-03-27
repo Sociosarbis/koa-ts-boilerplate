@@ -2,6 +2,9 @@ import 'reflect-metadata'
 import statusCodes from 'http-status-codes'
 import * as request from 'supertest'
 import { AppModule } from './app.module'
+import AppDataSource, { CustomDataSource } from './database'
+import { AuthTestService } from '@/modules/auth/auth.service'
+import { addMockObject } from '@/base/module'
 
 describe('App test', () => {
   let app: AppModule
@@ -9,12 +12,27 @@ describe('App test', () => {
     app = await new AppModule().asApp()
   })
 
-  /*test('Get hello word', (done) => {
-    request(app.callback()).get('/').expect(200).end(done)
-  })*/
+  test('Get hello word', async () => {
+    request(app.callback()).get('/').expect(200)
+  })
+
+  afterAll(() => {
+    app.destroy()
+  })
+})
+
+describe('App Auth', () => {
+  let app: AppModule
+  beforeAll(async () => {
+    const mockProviderMap = new Map()
+    addMockObject(mockProviderMap, AuthTestService)
+    app = await new AppModule({ mockProviderMap }).asApp()
+  })
 
   test('Auth Happy Path', async () => {
     const handler = app.callback()
+    const db: CustomDataSource = app.resolveDep(AppDataSource)
+    await db.queryRunner.startTransaction()
     let resp = await request(handler)
       .post('/auth/account')
       .send({
@@ -52,6 +70,7 @@ describe('App test', () => {
       .set('Authorization', `Bearer ${resp.body.accessToken}`)
       .send({ refreshToken })
       .expect(statusCodes.UNAUTHORIZED)
+    await db.queryRunner.rollbackTransaction()
   })
 
   afterAll(() => {

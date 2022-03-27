@@ -9,10 +9,11 @@ type MySQLConfig = {
   database: string
 }
 
+const isTest = process.env.NODE_ENV === 'test'
+const isProd = process.env.NODE_ENV === 'production'
+
 const resolveRelative = (p: string) => {
-  return isAbsolute(p)
-    ? p
-    : join(process.env.NODE_ENV === 'test' ? process.cwd() : __dirname, p)
+  return isAbsolute(p) ? p : join(isTest ? process.cwd() : __dirname, p)
 }
 
 function resolveMySQLConfigFromEnv(): MySQLConfig {
@@ -28,7 +29,6 @@ function resolveMySQLConfigFromEnv(): MySQLConfig {
 dotEnv.config({ path: resolveRelative('env') })
 
 const port = Number(process.env.PORT || 3000)
-const isProd = process.env.NODE_ENV === 'production'
 
 const downloadsRoot = resolveRelative(process.env.DOWNLOADS_ROOT)
 
@@ -43,6 +43,7 @@ const authSecretKey = process.env.AUTH_SECRET_KEY || 'auth-secret-key'
 export {
   port,
   isProd,
+  isTest,
   downloadsRoot,
   serverRoot,
   uploadResourceRoot,

@@ -1,13 +1,20 @@
-import { DataSource } from 'typeorm'
+import { DataSource, DataSourceOptions, QueryRunner } from 'typeorm'
 import { Token } from '@/dao/token.entity'
 import { User } from '@/dao/user.entity'
-import { mysqlConfig } from '@/utils/env'
+import { isTest, mysqlConfig } from '@/utils/env'
 import { markClassFactory } from '@/common/makeClassFactory'
 import { OnModuleDestroy } from './common/hooks'
 
 class CustomDataSource extends DataSource implements OnModuleDestroy {
+  queryRunner: QueryRunner
+  constructor(options: DataSourceOptions) {
+    super(options)
+    this.queryRunner = this.createQueryRunner()
+  }
+
   onModuleDestroy() {
     this.destroy()
+    this.queryRunner.release()
   }
 }
 
@@ -22,7 +29,9 @@ const AppDataSource = markClassFactory(() => {
     entities: [Token, User],
     logging: false,
   })
-  return datasource.initialize()
+  return datasource
+    .initialize()
+    .then((db) => (isTest ? db.queryRunner.connect().then(() => db) : db))
 })
 
 export * from 'typeorm'

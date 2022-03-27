@@ -7,28 +7,39 @@ import {
   QUEUE_METADATA,
   CLASS_FACTORY_METADATA,
   INJECT_METADATA,
+  INJECTABLE_METADATA,
 } from '@/base/consts'
 import { ModuleConfig } from '@/common/decorators/module'
 import * as Queue from 'bull'
 import { BaseController } from './controller'
+import { isTest } from '@/utils/env'
 
 function callHook<T>(obj: T, hookName: 'onModuleInit' | 'onModuleDestroy') {
   if (typeof obj[hookName] === 'function') obj[hookName]()
   return obj
 }
 
+export function addMockObject(map: Map<any, any>, p: any) {
+  const providerKey = Reflect.getMetadata(INJECTABLE_METADATA, p)
+  map.set(providerKey, p)
+}
+
+export type ModuleOptions = { mockProviderMap?: Map<any, any> }
+
 export class BaseModule extends Koa {
   parent: BaseModule = null
   imports: BaseModule[] = []
   controllers: BaseController[] = []
   #isReady: Promise<void>
+  #mockProviderMap?: Map<any, any>
   protected queueMap: Record<string, Queue.Queue> = {}
   protected providerMap = new Map<any, any>()
   protected moduleConfig: ModuleConfig
 
-  constructor(parent: BaseModule) {
+  constructor(parent: BaseModule, options: ModuleOptions = {}) {
     super()
     this.parent = parent
+    this.#mockProviderMap = options.mockProviderMap
     this.moduleConfig = Reflect.getMetadata(MODULE_METADATA, this.constructor)
     this.#isReady = this.handleProviders(this.moduleConfig).then(() =>
       this.handleControllers(this.moduleConfig),
@@ -44,6 +55,10 @@ export class BaseModule extends Koa {
       await Promise.all(
         moduleConfig.providers.map(async (p) => {
           const factoryMeta = Reflect.getMetadata(CLASS_FACTORY_METADATA, p)
+          const providerKey = Reflect.getMetadata(INJECTABLE_METADATA, p)
+          if (isTest && this.#mockProviderMap.has(providerKey)) {
+            p = this.#mockProviderMap.get(providerKey)
+          }
           const params = this.resolveParams(p)
           let inst = factoryMeta ? p(...params) : new p(...params)
           if (inst instanceof Promise) {
@@ -55,7 +70,7 @@ export class BaseModule extends Koa {
           } else if (Reflect.getMetadata(PROCESSOR_METADATA, p)) {
             this.handleProcessor(p)
           } else {
-            this.providerMap.set(p, inst)
+            this.providerMap.set(providerKey ?? p, inst)
           }
         }),
       )
@@ -126,7 +141,10 @@ export class BaseModule extends Koa {
       await this.#isReady
       await Promise.all(
         this.moduleConfig.imports.map(async (m) => {
-          const mod = callHook(new m(this), 'onModuleInit')
+          const mod = callHook(
+            new m(this, { mockProviderMap: this.#mockProviderMap }),
+            'onModuleInit',
+          )
           this.imports.push(mod)
           await mod.isReady()
           middlewares.push(await mod.asMiddleware())
