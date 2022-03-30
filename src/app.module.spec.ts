@@ -12,8 +12,8 @@ describe('App test', () => {
     app = await new AppModule().asApp()
   })
 
-  test('Get hello word', async () => {
-    request(app.callback()).get('/').expect(200)
+  test('Get hello world', async () => {
+    await request(app.callback()).get('/').expect(200)
   })
 
   afterAll(() => {

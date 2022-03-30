@@ -56,7 +56,7 @@ export class BaseModule extends Koa {
         moduleConfig.providers.map(async (p) => {
           const factoryMeta = Reflect.getMetadata(CLASS_FACTORY_METADATA, p)
           const providerKey = Reflect.getMetadata(INJECTABLE_METADATA, p)
-          if (isTest && this.#mockProviderMap.has(providerKey)) {
+          if (isTest && this.#mockProviderMap?.has(providerKey)) {
             p = this.#mockProviderMap.get(providerKey)
           }
           const params = this.resolveParams(p)

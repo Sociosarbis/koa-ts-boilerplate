@@ -30,9 +30,16 @@ export class AuthService {
     this.#tokenRepo = db.getRepository(Token)
   }
 
+  createUserQueryBuilder() {
+    return this.#repo.createQueryBuilder('user')
+  }
+
+  createTokenQueryBuilder() {
+    return this.#tokenRepo.createQueryBuilder('token')
+  }
+
   getUserByName(name: string) {
-    return this.#repo
-      .createQueryBuilder('user')
+    return this.createUserQueryBuilder()
       .where('user.username = :username', {
         username: name,
       })
@@ -47,13 +54,8 @@ export class AuthService {
     token.expiresAt = dayjs().add(1, 'day').toDate()
     return Object.assign(
       token,
-      (
-        await this.#tokenRepo
-          .createQueryBuilder('token')
-          .insert()
-          .values(token)
-          .execute()
-      ).generatedMaps[0],
+      (await this.createTokenQueryBuilder().insert().values(token).execute())
+        .generatedMaps[0],
     )
   }
 
@@ -64,8 +66,7 @@ export class AuthService {
   }
 
   getRefreshToken(userID: number, value: string) {
-    return this.#tokenRepo
-      .createQueryBuilder('token')
+    return this.createTokenQueryBuilder()
       .where('token.user_id = :userID', {
         userID,
       })
@@ -78,8 +79,7 @@ export class AuthService {
 
   cancelRefreshToken(userID: number, value?: string) {
     const expiresAt = new Date()
-    const queryBuilder = this.#tokenRepo
-      .createQueryBuilder('token')
+    const queryBuilder = this.createTokenQueryBuilder()
       .update()
       .where('token.user_id = :userID', {
         userID,
@@ -112,7 +112,7 @@ export class AuthService {
     user.hashedPassword = hashSync(password, 12)
     return Object.assign(
       user,
-      (await this.#repo.createQueryBuilder().insert().values(user).execute())
+      (await this.createUserQueryBuilder().insert().values(user).execute())
         .generatedMaps[0],
     )
   }
@@ -127,90 +127,11 @@ export class AuthTestService extends AuthService {
     this.#db = db
   }
 
-  getUserByName(name: string) {
-    return this.#db.queryRunner.manager
-      .createQueryBuilder(User, 'user')
-      .where('user.username = :username', {
-        username: name,
-      })
-      .getOne()
+  createUserQueryBuilder() {
+    return this.#db.queryRunner.manager.createQueryBuilder(User, 'user')
   }
 
-  getRefreshToken(userID: number, value: string) {
-    return this.#db.queryRunner.manager
-      .createQueryBuilder(Token, 'token')
-      .where('token.user_id = :userID', {
-        userID,
-      })
-      .andWhere('token.value = :value', { value })
-      .andWhere('token.expires_at > :expiresAt', {
-        expiresAt: new Date(),
-      })
-      .getOne()
-  }
-
-  async createRrefreshToken(userID: number) {
-    await this.cancelRefreshToken(userID)
-    const token = new Token()
-    token.userID = userID
-    token.value = crypto.randomBytes(40).toString('hex')
-    token.expiresAt = dayjs().add(1, 'day').toDate()
-    this.#db.queryRunner.manager.createQueryBuilder()
-    return Object.assign(
-      token,
-      (
-        await this.#db.queryRunner.manager
-          .createQueryBuilder(Token, 'token')
-          .insert()
-          .values(token)
-          .execute()
-      ).generatedMaps[0],
-    )
-  }
-
-  cancelRefreshToken(userID: number, value?: string) {
-    const expiresAt = new Date()
-    const queryBuilder = this.#db.queryRunner.manager
-      .createQueryBuilder(Token, 'token')
-      .update()
-      .where('token.user_id = :userID', {
-        userID,
-      })
-      .andWhere('token.expires_at > :expiresAt', {
-        expiresAt,
-      })
-      .set({
-        expiresAt,
-      })
-    if (value) {
-      queryBuilder.andWhere('token.value = :value', { value })
-    }
-    return queryBuilder.execute()
-  }
-
-  async createUser({
-    username,
-    password,
-  }: {
-    username: string
-    password: string
-  }) {
-    const existUser = await this.getUserByName(username)
-    if (existUser) {
-      throw new AuthError(AuthErrorMsg.USER_ALREADY_EXISTS)
-    }
-    const user = new User()
-    user.username = username
-    user.hashedPassword = hashSync(password, 12)
-    return Object.assign(
-      user,
-      (
-        await this.#db.queryRunner.manager
-          .createQueryBuilder(User, 'user')
-          .insert()
-          .values(user)
-          .execute()
-      ).generatedMaps[0],
-    )
+  createTokenQueryBuiilder() {
+    return this.#db.queryRunner.manager.createQueryBuilder(Token, 'token')
   }
 }
