@@ -57,7 +57,9 @@ export class AuthService {
       await queryRunner.commitTransaction()
       return res
     } catch (e) {
-      await queryRunner.rollbackTransaction()
+      try {
+        await queryRunner.rollbackTransaction()
+      } catch (e) {}
     } finally {
       queryRunner.release()
       revoke()
