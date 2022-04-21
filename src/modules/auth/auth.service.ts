@@ -8,6 +8,7 @@ import * as dayjs from 'dayjs'
 import { Injectable } from '@/common/decorators/injectable'
 import { Inject } from '@/common/decorators/inject'
 import { Token } from '@/dao/token.entity'
+import { QueryRunner } from 'typeorm'
 
 const ACCESS_TOKEN_EXPIRES_IN = '10m'
 
@@ -25,17 +26,55 @@ export class AuthService {
 
   #tokenRepo: Repository<Token>
 
+  #db: CustomDataSource
+
+  #queryRunner?: QueryRunner
+
   constructor(@Inject(AppDataSource) db: CustomDataSource) {
+    this.#db = db
     this.#repo = db.getRepository(User)
     this.#tokenRepo = db.getRepository(Token)
   }
 
+  async runInTransaction<T>(operation: (service: this) => Promise<T>) {
+    const queryRunner = this.#db.createQueryRunner()
+    const { proxy, revoke } = Proxy.revocable(this, {
+      get(target, p, receiver) {
+        if (p === '#queryRunner') {
+          return queryRunner
+        } else {
+          const value = Reflect.get(target, p)
+          if (typeof value === 'function') {
+            return value.bind(receiver)
+          }
+          return value
+        }
+      },
+    })
+    try {
+      await queryRunner.startTransaction()
+      const res = await operation(proxy)
+      await queryRunner.commitTransaction()
+      return res
+    } catch (e) {
+      await queryRunner.rollbackTransaction()
+    } finally {
+      revoke()
+    }
+  }
+
   createUserQueryBuilder() {
-    return this.#repo.createQueryBuilder('user')
+    return (this.#queryRunner
+      ? this.#queryRunner.manager.getRepository(User)
+      : this.#repo
+    ).createQueryBuilder('user')
   }
 
   createTokenQueryBuilder() {
-    return this.#tokenRepo.createQueryBuilder('token')
+    return (this.#queryRunner
+      ? this.#queryRunner.manager.getRepository(Token)
+      : this.#tokenRepo
+    ).createQueryBuilder('token')
   }
 
   getUserByName(name: string) {

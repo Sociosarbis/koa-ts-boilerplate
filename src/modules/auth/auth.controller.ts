@@ -42,7 +42,9 @@ export class AuthController extends BaseController {
       password,
     }: { username: string; password: string } = ctx.request.body
     try {
-      const user = await this.service.createUser({ username, password })
+      const user = await this.service.runInTransaction((s) => {
+        return s.createUser({ username, password })
+      })
       ctx.body = {
         user,
       }
@@ -74,7 +76,11 @@ export class AuthController extends BaseController {
     }
     ctx.body = {
       accessToken: this.service.createAccessToken(user),
-      refreshToken: (await this.service.createRrefreshToken(user.id)).value,
+      refreshToken: (
+        await this.service.runInTransaction((s) =>
+          s.createRrefreshToken(user.id),
+        )
+      ).value,
     }
   }
 
@@ -106,7 +112,7 @@ export class AuthController extends BaseController {
   @Compose([jwtMiddleware({ secret: authSecretKey, key: 'account' })])
   async logout(ctx: AppContext) {
     const id = this.checkUserID(ctx)
-    await this.service.cancelRefreshToken(id)
+    await this.service.runInTransaction((s) => s.cancelRefreshToken(id))
     ctx.body = msgResponse('ok')
   }
 }
