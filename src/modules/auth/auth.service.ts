@@ -59,6 +59,7 @@ export class AuthService {
     } catch (e) {
       await queryRunner.rollbackTransaction()
     } finally {
+      queryRunner.release()
       revoke()
     }
   }
